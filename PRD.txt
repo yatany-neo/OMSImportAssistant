@@ -1,0 +1,194 @@
+我想开发一个 web app，实现的功能是：
+1. 允许用户上传一个csv文件，上传完成后，自动对上传的问题件格式进行检查，文件必须包含的列名(大小写要与要求一致)为
+1) entitytype
+2) Id
+3) customerId
+4) MediaPlanId
+5) PRODUCTID
+6) Name
+7) Description
+8) StartDate
+9) EndDate
+10) Cpm
+11) Cpd
+12) TargetImpressions
+13) TargetSpend
+14) IsReserved
+15) LineType
+16) BudgetScheduleType
+17) Targets
+18) LineId
+19) TargetType
+20) Ids
+21) IsExcluded
+22) AudienceTargetingType
+23) DeviceTypes
+
+如果文件格式不符合要求，则提醒用户上传的文件不符合要求，并终止后续步骤。
+
+2. 完成格式检查后，对于所加载的数据，将 entitytype = "Line" 的行提取出来，保存为临时文件 lines_temp。将 entitytype = "LineTarget" 的行提取出来，保存为临时数据 lines_target_temp。
+
+3. 然后，在UI上展现 lines_temp 的数据，包括列名。在这一步，表格需要展示所有的列（23个字段），即使某些字段为空也要显示出来。当数据较多时，可以翻页。并且允许用户 filter 数据，来展示某些特定数据行。
+
+4. 让用户选择他需要对哪些 rows 进行操作，可以多选 multiple rows，选择完成后，点击下一步，同时系统将用户选择的结果存储为临时数据 post_selection。
+
+5. 接下来，用户可以从 3个 action options 中选择1个
+1) 用户选择 I want to clone these line times in the media plan。
+a. 那么在选择后，在一个新页面展示出用户所挑选的这些数据 post_selection。在该页面上，仅展示以下列：
+
+1) entitytype
+2) Id
+3) customerId
+4) MediaPlanId
+5) PRODUCTID
+6) Name
+7) Description
+8) StartDate
+9) EndDate
+10) Cpm
+11) Cpd
+12) TargetImpressions
+13) TargetSpend
+14) IsReserved
+15) LineType
+16) BudgetScheduleType
+
+在该页面上，用户不允许更改 Id, entitytype，customerId, MediaPlanId, PRODUCTID，其余列可以进行修改。需要注意 StartDate, EndDate 需要显示日期和时间戳，精确到秒，与源数据一致。
+
+b. 当用户完成修改后，自动保存用户修改后的数据为 post_selection_complete_edit，点击下一步。
+
+c. 接下来，需要做一些额外的数据处理。
+c-1: 首先，从 lines_target_temp 中选择那些 LineId 的值与 post_selection_complete_edit 的 Id 值相同的行，将挑选出的数据存储为临时数据 lines_target_temp_select。 
+c-2: 接下来，将 lines_target_temp_select 数据 append 到 post_selection_complete_edit 的结尾，将2份数据合并，合并后的数据存储为 lines_merged_select。
+c-3: 然后，设置一个临时变量 max_negative_value 为 -1，设置另一个临时变量 max_negative_value_2 为 -1。
+c-4: 遍历 lines_merged_select 中 entitytype = "Line" 的行，找到每一行的 Id 值，然后继续在 lines_merged_select 数据中遍历 entitytype = "LineTarget" 的行，找到 LineId 与该 Id 值相同的行 （可能有多行）。
+c-5: 将此次遍历到的 entitytype="Line" 的数据行与找到的 entitytype = "LineTarget" 的数据行放在一起，作为一个 data set 准备更新。
+在这个 data set 中:
+1: 修改 entitytype = "Line" 的 数据行的 Id 值，为一个小于 max_negative_value 的最大负整数。比如当 max_negative_value = -1 时，则修改 Id 为 -2，同时重置 max_negative_value 为 -2。
+2: 逐一修改 entitytype = "LineTarget" 的数据行的 Id 值，为一个小于 max_negative_value_2 的最大负整数。每次修改一个 Id 值，则重置一次 max_negative_value_2 为当前值减1。
+3: 修改 entitytype = "LineTarget" 的所有数据行的 LineId 的值为置为重置后的 max_negative_value。
+
+即:
+Line的Id：每个Line分配一个唯一的负数Id（如-1、-2、-3...）。
+LineTarget的Id：每个LineTarget分配一个唯一的负数Id（如-1、-2、-3...，与Line的Id序列独立）。
+LineTarget的LineId：全部指向其对应Line的新负数Id。
+LineTarget的Id：绝不能与Line的Id重复，且每个LineTarget都唯一。
+例子:
+假设有2个Line（Id=11,12），各自有2个LineTarget：
+Line 11 → 新Id -1
+LineTarget 1 → 新Id -1（LineId=-1）
+LineTarget 2 → 新Id -2（LineId=-1）
+Line 12 → 新Id -2
+LineTarget 3 → 新Id -3（LineId=-2）
+LineTarget 4 → 新Id -4（LineId=-2）
+
+c-6：处理完所有的数据后，将处理后的结果保存为临时数据 lines_merged_select_update_complete。
+
+d. 有一页让用户 review 更新后的数据 lines_merged_select_update_complete，如果用户对有些数据不满意，可以回退到上一步重新修改。用户review后，可以点击 next 到下一步，准备导出数据。在这一页，无需展示 entitytype = "LineTarget"的数据行。
+e. 将 lines_merged_select_update_complete 导出为新的 csv 文件，命名为 ready_for_import.csv。文件导出后，给用户一个提示，告诉其请回到 OMS 系统的对应的 media plan 页面将该 csv 文件 import。
+
+
+
+2) 用户选择 I want to copy these line items into a new media plan。
+a. 那么在选择后，首先让用户输入 target media plan id where the lines will be copied to，用户完成输入后，用户选择下一步，同时系统记录下该 media plan id 值为 target_media_plan_id。
+
+b. 在一个新页面展示出用户所挑选的这些数据 post_selection。在该页面上，仅展示以下列：
+1) entitytype
+2) Id
+3) customerId
+4) MediaPlanId
+5) PRODUCTID
+6) Name
+7) Description
+8) StartDate
+9) EndDate
+10) Cpm
+11) Cpd
+12) TargetImpressions
+13) TargetSpend
+14) IsReserved
+15) LineType
+16) BudgetScheduleType
+
+在该页面上，用户不允许更改 Id, entitytype，customerId, MediaPlanId, PRODUCTID，其余列可以进行修改。需要注意 StartDate, EndDate 需要显示日期和时间戳，精确到秒，与源数据一致。
+
+c. 当用户完成修改后，自动保存用户修改后的数据为 post_selection_complete_edit，点击下一步。
+
+d. 接下来，需要做一些额外的数据处理。
+d-1: 首先，从 lines_target_temp 中选择那些 LineId 的值与 post_selection_complete_edit 的 Id 值相同的行，将挑选出的数据存储为临时数据 lines_target_temp_select。 
+d-2: 接下来，将 lines_target_temp_select 数据 append 到 post_selection_complete_edit 的结尾，将2份数据合并，合并后的数据存储为 lines_merged_select。
+d-3: 然后，设置一个临时变量 max_negative_value 为 -1，设置另一个临时变量 max_negative_value_2 为 -1。
+d-4: 遍历 lines_merged_select 中 entitytype = "Line" 的行，找到每一行的 Id 值，然后继续在 lines_merged_select 数据中遍历 entitytype = "LineTarget" 的行，找到 LineId 与该 Id 值相同的行 （可能有多行）。
+d-5: 将此次遍历到的 entitytype="Line" 的数据行与找到的 entitytype = "LineTarget" 的数据行放在一起，作为一个 data set 准备更新。
+在这个 data set 中:
+1: 修改 entitytype = "Line" 的 数据行的 Id 值，为一个小于 max_negative_value 的最大负整数。比如当 max_negative_value = -1 时，则修改 Id 为 -2，同时重置 max_negative_value 为 -2。
+2: 逐一修改 entitytype = "LineTarget" 的数据行的 Id 值，为一个小于 max_negative_value_2 的最大负整数。每次修改一个 Id 值，则重置一次 max_negative_value_2 为当前值减1。
+3: 修改 entitytype = "LineTarget" 的所有数据行的 LineId 的值为置为重置后的 max_negative_value。
+
+即:
+Line的Id：每个Line分配一个唯一的负数Id（如-1、-2、-3...）。
+LineTarget的Id：每个LineTarget分配一个唯一的负数Id（如-1、-2、-3...，与Line的Id序列独立）。
+LineTarget的LineId：全部指向其对应Line的新负数Id。
+LineTarget的Id：绝不能与Line的Id重复，且每个LineTarget都唯一。
+例子:
+假设有2个Line（Id=11,12），各自有2个LineTarget：
+Line 11 → 新Id -1
+LineTarget 1 → 新Id -1（LineId=-1）
+LineTarget 2 → 新Id -2（LineId=-1）
+Line 12 → 新Id -2
+LineTarget 3 → 新Id -3（LineId=-2）
+LineTarget 4 → 新Id -4（LineId=-2）
+
+d-6：处理完所有的数据后，将处理后的结果保存为临时数据 lines_merged_select_update_complete。此时, 数据中的 MediaPlanId 已经被更新为 target_media_plan_id。
+
+e. 有一页让用户 review 更新后的数据 lines_merged_select_update_complete，如果用户对有些数据不满意，可以回退到上一步重新修改。用户review后，可以点击 next 到下一步，准备导出数据。在这一页上所展示的数据中, MediaPlanId 已经被更新为 target_media_plan_id。在这一页，无需展示 entitytype = "LineTarget"的数据行。
+
+f. 将 lines_merged_select_update_complete 导出为新的 csv 文件，命名为 ready_for_import.csv。文件导出后，给用户一个提示，告诉其请回到 OMS 系统的对应的 media plan 页面将该 csv 文件 import。
+
+
+
+3) 用户选择 I want to edit these line items。
+a. 那么在选择后，在一个新页面展示出用户所挑选的这些数据 post_selection。在该页面上，仅展示以下列：
+
+1) entitytype
+2) Id
+3) customerId
+4) MediaPlanId
+5) PRODUCTID
+6) Name
+7) Description
+8) StartDate
+9) EndDate
+10) Cpm
+11) Cpd
+12) TargetImpressions
+13) TargetSpend
+14) IsReserved
+15) LineType
+16) BudgetScheduleType
+
+在该页面上，用户不允许更改 Id, entitytype，customerId, MediaPlanId, PRODUCTID，其余列可以进行修改。需要注意 StartDate, EndDate 需要显示日期和时间戳，精确到秒，与源数据一致。
+
+b. 当用户完成修改后，自动保存用户修改后的数据为 post_selection_complete_edit，点击下一步。
+
+c. 接下来，将 lines_target_temp_select 数据 append 到 post_selection_complete_edit 的结尾，将2份数据合并，合并后的数据存储为临时数据 lines_merged_select_update_complete。
+
+d. 有一页让用户 review 更新后的数据 lines_merged_select_update_complete，如果用户对有些数据不满意，可以回退到上一步重新修改。用户review后，可以点击 next 到下一步，准备导出数据。在这一页，无需展示 entitytype = "LineTarget"的数据行。
+
+e. 将 lines_merged_select_update_complete 导出为新的 csv 文件，命名为 ready_for_import.csv。文件导出后，给用户一个提示，告诉其请回到 OMS 系统的对应的 media plan 页面将该 csv 文件 import。此外，提醒用户原有的 line items 的数据将会被新数据覆盖，请告知其无比仔细检查确保修改正确。
+
+
+
+开发要求：
+1. 需要简洁、清晰的UI，让用户清楚整体步骤，以及当前在哪一步，下一步是什么。
+2. 自动化地解决依赖问题
+3. 自动为我修复问题，无需询问。
+4. 技术架构简单，方便部署到 Azure server。
+5. 单独为该项目处理依赖 dependency，和各种 package dependency。尤其注意版本的兼容性。
+6. 正确处理空值数据，保证所有空值都能被正确序列化为JSON。
+7. 自动实现日期标准化逻辑：
+1) 如果 StartDate/EndDate 只有日期没有时间，StartDate 自动补全为 00:00:00，EndDate 自动补全为 23:59:59。
+2) 如果原本就有时间，则保持原样。
+3）支持“无秒”的时间格式（如 6/1/2025 22:00），会自动补全为 6/1/2025 22:00:00，保证 startdate/enddate 都能正常显示。
+8. 将所有临时数据存储在内存中。
+9. 注意数据格式的一致性，特别是浮点、小数、整数、字符类型的数据，在从 csv 文件读取后，正确处理为一致的数据类型。

@@ -1,0 +1,4 @@
+entitytype,Id,customerId,MediaPlanId,PRODUCTID,Name,Description,StartDate,EndDate,Cpm,Cpd,TargetImpressions,TargetSpend,IsReserved,LineType,BudgetScheduleType,Targets,LineId,TargetType,Ids,IsExcluded,AudienceTargetingType,DeviceTypes
+Line,11,10929147,30.0,59.0,Rotational Line - Import,,6/1/2025 22:00,6/3/2025 22:00,20.0,,13000.0,,False,,,,,,,,,
+Line,12,10929147,30.0,60.0,Roadblock Line - Import,"Roadblock description, with comma",6/1/2025,6/1/2025,,72.0,,,False,,,,,,,,,
+Line,13,10929147,30.0,59.0,Rotational Line - Import 2,Make-good,6/1/2025 22:00,6/3/2025 22:00,,,12000.0,,False,MakeGood,,,,,,,,
