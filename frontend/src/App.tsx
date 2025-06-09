@@ -491,7 +491,7 @@ const App: React.FC = () => {
             <p>Please go back to the corresponding media plan page in the OMS system and import the exported CSV file.</p>
             <Button
               type="primary"
-              href={downloadReady ? '/download_ready_csv' : undefined}
+              href={downloadReady ? 'https://omsimportassistant-hrhpdxdrbvc3eha9.eastus2-01.azurewebsites.net/download_ready_csv' : undefined}
               target="_blank"
               disabled={!downloadReady}
               style={{ marginTop: 24, marginRight: 16 }}
