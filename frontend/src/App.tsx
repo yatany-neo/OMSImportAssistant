@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Steps, Upload, Table, Button, message, Modal, Input, DatePicker } from 'antd';
+import { Layout, Steps, Upload, Table, Button, message, Modal, Input } from 'antd';
 import { InboxOutlined } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
 import axios from 'axios';
-import moment from 'moment';
-import { unparse } from 'papaparse';
 
 axios.defaults.baseURL = 'https://omsimportassistant-hrhpdxdrbvc3eha9.eastus2-01.azurewebsites.net';
 
@@ -120,23 +118,6 @@ const App: React.FC = () => {
 
   // 只读字段
   const readOnlyFields = ['Id', 'entitytype', 'customerId', 'MediaPlanId', 'PRODUCTID'];
-
-  // 日期标准化函数，支持无秒自动补全
-  function normalizeDateString(text: any, isEnd: boolean = false) {
-    if (!text || typeof text !== 'string') return undefined;
-    const trimmed = text.trim();
-    // 只日期
-    if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(trimmed)) {
-      return moment(trimmed + (isEnd ? ' 23:59:59' : ' 00:00:00'), 'M/D/YYYY HH:mm:ss');
-    }
-    // 日期+时:分（无秒）
-    if (/^\d{1,2}\/\d{1,2}\/\d{4} \d{1,2}:\d{2}$/.test(trimmed)) {
-      return moment(trimmed + ':00', 'M/D/YYYY HH:mm:ss');
-    }
-    // 日期+时:分:秒
-    const m = moment(trimmed, 'M/D/YYYY HH:mm:ss', true);
-    return m.isValid() ? m : undefined;
-  }
 
   // 只用于显示的columns
   const clonePageColumns = columns.filter(col => clonePageFields.includes(col.dataIndex)).map(col => {
