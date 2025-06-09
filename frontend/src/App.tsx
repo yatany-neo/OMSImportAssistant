@@ -6,6 +6,8 @@ import axios from 'axios';
 import moment from 'moment';
 import { unparse } from 'papaparse';
 
+axios.defaults.baseURL = 'https://omsimportassistant-hrhpdxdrbvc3eha9.eastus2-01.azurewebsites.net';
+
 const { Header, Content } = Layout;
 const { Dragger } = Upload;
 const { Step } = Steps;
@@ -76,7 +78,7 @@ const App: React.FC = () => {
     const formData = new FormData();
     formData.append('file', fileList[0]);
     try {
-      const response = await axios.post('http://localhost:8000/upload', formData);
+      const response = await axios.post('/upload', formData);
       if (response.data.error) {
         setUploadError('You uploaded a file with incorrect format, please use another file.');
         setTimeout(() => setFileList([]), 300);
@@ -85,7 +87,7 @@ const App: React.FC = () => {
         message.success('File uploaded successfully');
         setCurrentStep(1);
         // 获取数据
-        const dataResponse = await axios.get('http://localhost:8000/lines');
+        const dataResponse = await axios.get('/lines');
         // 为每一行加originalId
         const withOriginalId = (dataResponse.data.data || []).map((row: any) => ({ ...row, originalId: row.Id }));
         setData(withOriginalId);
@@ -323,7 +325,7 @@ const App: React.FC = () => {
                   try {
                     // 提交时用originalId覆盖Id，带上targetMediaPlanId
                     const submitData = editData.map(row => ({ ...row, Id: row.originalId, MediaPlanId: targetMediaPlanId }));
-                    const res = await axios.post('http://localhost:8000/process_copy', { lines: submitData, targetMediaPlanId });
+                    const res = await axios.post('/process_copy', { lines: submitData, targetMediaPlanId });
                     if (res.data && res.data.success) {
                       setReviewData(res.data.review_data || []);
                       setDownloadReady(true);
@@ -360,7 +362,7 @@ const App: React.FC = () => {
                     try {
                       // 提交时用originalId覆盖Id，保证后端用原始Id匹配
                       const submitData = editData.map(row => ({ ...row, Id: row.originalId }));
-                      const res = await axios.post('http://localhost:8000/process_edit', submitData);
+                      const res = await axios.post('/process_edit', submitData);
                       if (res.data && res.data.success) {
                         setReviewData(res.data.review_data || []);
                         setDownloadReady(true);
@@ -396,7 +398,7 @@ const App: React.FC = () => {
                     try {
                       // 提交时用originalId覆盖Id，保证后端用原始Id匹配
                       const submitData = editData.map(row => ({ ...row, Id: row.originalId }));
-                      const res = await axios.post('http://localhost:8000/process_clone', submitData);
+                      const res = await axios.post('/process_clone', submitData);
                       if (res.data && res.data.success) {
                         setReviewData(res.data.review_data || []);
                         setDownloadReady(true);
@@ -508,7 +510,7 @@ const App: React.FC = () => {
             <p>Please go back to the corresponding media plan page in the OMS system and import the exported CSV file.</p>
             <Button
               type="primary"
-              href={downloadReady ? 'http://localhost:8000/download_ready_csv' : undefined}
+              href={downloadReady ? '/download_ready_csv' : undefined}
               target="_blank"
               disabled={!downloadReady}
               style={{ marginTop: 24, marginRight: 16 }}
