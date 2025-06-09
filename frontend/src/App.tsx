@@ -301,7 +301,6 @@ const App: React.FC = () => {
                   onClick={async () => {
                     setProcessing(true);
                     try {
-                      // 提交时用originalId覆盖Id，带上targetMediaPlanId
                       const submitData = editData.map(row => ({ ...row, Id: row.originalId, MediaPlanId: targetMediaPlanId }));
                       const res = await axios.post('/process_copy', { lines: submitData, targetMediaPlanId });
                       if (res.data && res.data.success) {
@@ -340,7 +339,6 @@ const App: React.FC = () => {
                     onClick={async () => {
                       setProcessing(true);
                       try {
-                        // 提交时用originalId覆盖Id，保证后端用原始Id匹配
                         const submitData = editData.map(row => ({ ...row, Id: row.originalId }));
                         const res = await axios.post('/process_edit', submitData);
                         if (res.data && res.data.success) {
@@ -361,7 +359,7 @@ const App: React.FC = () => {
                   </Button>
                 </div>
               </div>
-            ) :
+            ) : (
               <div>
                 <h2>Please edit the lines you want to clone</h2>
                 <Table
@@ -378,7 +376,6 @@ const App: React.FC = () => {
                     onClick={async () => {
                       setProcessing(true);
                       try {
-                        // 提交时用originalId覆盖Id，保证后端用原始Id匹配
                         const submitData = editData.map(row => ({ ...row, Id: row.originalId }));
                         const res = await axios.post('/process_clone', submitData);
                         if (res.data && res.data.success) {
@@ -400,7 +397,6 @@ const App: React.FC = () => {
                 </div>
               </div>
             )
-          )
         )}
 
         {currentStep === 4 && (
