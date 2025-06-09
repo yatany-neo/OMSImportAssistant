@@ -235,12 +235,8 @@ const App: React.FC = () => {
               rowKey="originalId"
               scroll={{ x: 'max-content', y: tableHeight }}
             />
-            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center', gap: 16 }}>
-              <Button
-                onClick={() => setCurrentStep(0)}
-              >
-                Back
-              </Button>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
+              <Button onClick={() => setCurrentStep(0)}>Back</Button>
               <Button
                 type="primary"
                 onClick={() => setCurrentStep(2)}
@@ -297,34 +293,36 @@ const App: React.FC = () => {
                 pagination={false}
                 rowKey="originalId"
               />
-              <Button
-                type="primary"
-                style={{ marginTop: 20 }}
-                loading={processing}
-                onClick={async () => {
-                  setProcessing(true);
-                  try {
-                    // 提交时用originalId覆盖Id，带上targetMediaPlanId
-                    const submitData = editData.map(row => ({ ...row, Id: row.originalId, MediaPlanId: targetMediaPlanId }));
-                    const res = await axios.post('/process_copy', { lines: submitData, targetMediaPlanId });
-                    if (res.data && res.data.success) {
-                      setReviewData(res.data.review_data || []);
-                      setDownloadReady(true);
-                      setCurrentStep(4);
-                    } else {
-                      message.error(res.data.error || 'Processing failed');
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
+                <Button onClick={() => setCurrentStep(2)}>Back</Button>
+                <Button
+                  type="primary"
+                  loading={processing}
+                  onClick={async () => {
+                    setProcessing(true);
+                    try {
+                      // 提交时用originalId覆盖Id，带上targetMediaPlanId
+                      const submitData = editData.map(row => ({ ...row, Id: row.originalId, MediaPlanId: targetMediaPlanId }));
+                      const res = await axios.post('/process_copy', { lines: submitData, targetMediaPlanId });
+                      if (res.data && res.data.success) {
+                        setReviewData(res.data.review_data || []);
+                        setDownloadReady(true);
+                        setCurrentStep(4);
+                      } else {
+                        message.error(res.data.error || 'Processing failed');
+                      }
+                    } catch (e) {
+                      message.error('Processing failed');
+                    } finally {
+                      setProcessing(false);
                     }
-                  } catch (e) {
-                    message.error('Processing failed');
-                  } finally {
-                    setProcessing(false);
-                  }
-                }}
-              >
-                Next
-              </Button>
+                  }}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
-          ) : (
+          ) :
             selectedAction === 'edit' ? (
               <div>
                 <h2>Please edit the lines you want to update</h2>
@@ -334,34 +332,36 @@ const App: React.FC = () => {
                   pagination={false}
                   rowKey="originalId"
                 />
-                <Button
-                  type="primary"
-                  style={{ marginTop: 20 }}
-                  loading={processing}
-                  onClick={async () => {
-                    setProcessing(true);
-                    try {
-                      // 提交时用originalId覆盖Id，保证后端用原始Id匹配
-                      const submitData = editData.map(row => ({ ...row, Id: row.originalId }));
-                      const res = await axios.post('/process_edit', submitData);
-                      if (res.data && res.data.success) {
-                        setReviewData(res.data.review_data || []);
-                        setDownloadReady(true);
-                        setCurrentStep(4);
-                      } else {
-                        message.error(res.data.error || 'Processing failed');
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
+                  <Button onClick={() => setCurrentStep(2)}>Back</Button>
+                  <Button
+                    type="primary"
+                    loading={processing}
+                    onClick={async () => {
+                      setProcessing(true);
+                      try {
+                        // 提交时用originalId覆盖Id，保证后端用原始Id匹配
+                        const submitData = editData.map(row => ({ ...row, Id: row.originalId }));
+                        const res = await axios.post('/process_edit', submitData);
+                        if (res.data && res.data.success) {
+                          setReviewData(res.data.review_data || []);
+                          setDownloadReady(true);
+                          setCurrentStep(4);
+                        } else {
+                          message.error(res.data.error || 'Processing failed');
+                        }
+                      } catch (e) {
+                        message.error('Processing failed');
+                      } finally {
+                        setProcessing(false);
                       }
-                    } catch (e) {
-                      message.error('Processing failed');
-                    } finally {
-                      setProcessing(false);
-                    }
-                  }}
-                >
-                  Next
-                </Button>
+                    }}
+                  >
+                    Next
+                  </Button>
+                </div>
               </div>
-            ) : (
+            ) :
               <div>
                 <h2>Please edit the lines you want to clone</h2>
                 <Table
@@ -370,119 +370,61 @@ const App: React.FC = () => {
                   pagination={false}
                   rowKey="originalId"
                 />
-                <Button
-                  type="primary"
-                  style={{ marginTop: 20 }}
-                  loading={processing}
-                  onClick={async () => {
-                    setProcessing(true);
-                    try {
-                      // 提交时用originalId覆盖Id，保证后端用原始Id匹配
-                      const submitData = editData.map(row => ({ ...row, Id: row.originalId }));
-                      const res = await axios.post('/process_clone', submitData);
-                      if (res.data && res.data.success) {
-                        setReviewData(res.data.review_data || []);
-                        setDownloadReady(true);
-                        setCurrentStep(4);
-                      } else {
-                        message.error(res.data.error || 'Processing failed');
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
+                  <Button onClick={() => setCurrentStep(2)}>Back</Button>
+                  <Button
+                    type="primary"
+                    loading={processing}
+                    onClick={async () => {
+                      setProcessing(true);
+                      try {
+                        // 提交时用originalId覆盖Id，保证后端用原始Id匹配
+                        const submitData = editData.map(row => ({ ...row, Id: row.originalId }));
+                        const res = await axios.post('/process_clone', submitData);
+                        if (res.data && res.data.success) {
+                          setReviewData(res.data.review_data || []);
+                          setDownloadReady(true);
+                          setCurrentStep(4);
+                        } else {
+                          message.error(res.data.error || 'Processing failed');
+                        }
+                      } catch (e) {
+                        message.error('Processing failed');
+                      } finally {
+                        setProcessing(false);
                       }
-                    } catch (e) {
-                      message.error('Processing failed');
-                    } finally {
-                      setProcessing(false);
-                    }
-                  }}
-                >
-                  Next
-                </Button>
+                    }}
+                  >
+                    Next
+                  </Button>
+                </div>
               </div>
             )
           )
         )}
 
         {currentStep === 4 && (
-          selectedAction === 'copy' ? (
-            <div>
-              <h2>Review Processed Data</h2>
-              <Table
-                columns={columns}
-                dataSource={reviewLineOnly(reviewData).map(row => ({ ...row, MediaPlanId: targetMediaPlanId }))}
-                pagination={false}
-                rowKey="originalId"
-                scroll={{ x: true }}
-              />
-              <div style={{ marginTop: 24, textAlign: 'center' }}>
-                <Button
-                  style={{ marginRight: 16 }}
-                  onClick={() => setCurrentStep(3)}
-                >
-                  Back
-                </Button>
-                <Button
-                  type="primary"
-                  onClick={() => setCurrentStep(5)}
-                >
-                  Next
-                </Button>
-              </div>
+          <div>
+            <h2>Review Processed Data</h2>
+            <Table
+              columns={columns}
+              dataSource={selectedAction === 'copy'
+                ? reviewLineOnly(reviewData).map(row => ({ ...row, MediaPlanId: targetMediaPlanId }))
+                : reviewLineOnly(reviewData)}
+              pagination={false}
+              rowKey="originalId"
+              scroll={{ x: true }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
+              <Button onClick={() => setCurrentStep(3)}>Back</Button>
+              <Button type="primary" onClick={() => setCurrentStep(5)}>Next</Button>
             </div>
-          ) : (
-            selectedAction === 'edit' ? (
-              <div>
-                <h2>Review Processed Data</h2>
-                <Table
-                  columns={columns}
-                  dataSource={reviewLineOnly(reviewData)}
-                  pagination={false}
-                  rowKey="originalId"
-                  scroll={{ x: true }}
-                />
-                <div style={{ marginTop: 24, textAlign: 'center' }}>
-                  <Button
-                    style={{ marginRight: 16 }}
-                    onClick={() => setCurrentStep(3)}
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    type="primary"
-                    onClick={() => setCurrentStep(5)}
-                  >
-                    Next
-                  </Button>
-                </div>
-                <div style={{ marginTop: 24, color: 'red', textAlign: 'center' }}>
-                  <b>Warning:</b> The original line items will be overwritten. Please double-check your changes carefully before importing the CSV into OMS.
-                </div>
+            {selectedAction === 'edit' && (
+              <div style={{ marginTop: 24, color: 'red', textAlign: 'center' }}>
+                <b>Warning:</b> The original line items will be overwritten. Please double-check your changes carefully before importing the CSV into OMS.
               </div>
-            ) : (
-              <div>
-                <h2>Review Processed Data</h2>
-                <Table
-                  columns={columns}
-                  dataSource={reviewLineOnly(reviewData)}
-                  pagination={false}
-                  rowKey="originalId"
-                  scroll={{ x: true }}
-                />
-                <div style={{ marginTop: 24, textAlign: 'center' }}>
-                  <Button
-                    style={{ marginRight: 16 }}
-                    onClick={() => setCurrentStep(3)}
-                  >
-                    Back
-                  </Button>
-                  <Button
-                    type="primary"
-                    onClick={() => setCurrentStep(5)}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            )
-          )
+            )}
+          </div>
         )}
 
         {currentStep === 5 && (
