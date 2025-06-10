@@ -33,13 +33,21 @@ REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.environ.get("REDIS_PORT", 6379))
 REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", None)
 
-redis_client = redis.Redis(
-    host=REDIS_HOST,
-    port=REDIS_PORT,
-    password=REDIS_PASSWORD,
-    decode_responses=True,
-    ssl=True
-)
+print("=== OMS Import Assistant FastAPI backend starting ===")
+print(f"Redis config: host={REDIS_HOST}, port={REDIS_PORT}, ssl=True")
+try:
+    redis_client = redis.Redis(
+        host=REDIS_HOST,
+        port=REDIS_PORT,
+        password=REDIS_PASSWORD,
+        decode_responses=True,
+        ssl=True
+    )
+    # 尝试连接
+    redis_client.ping()
+    print("=== Redis client initialized and connected successfully ===")
+except Exception as e:
+    print(f"!!! Redis client initialization or connection failed: {e}")
 
 def get_session_id(request: Request):
     return request.cookies.get("session_id") or "default"
