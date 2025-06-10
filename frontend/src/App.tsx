@@ -188,7 +188,28 @@ const App: React.FC = () => {
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Header style={{ background: '#fff', padding: 0, height: 80, display: 'flex', alignItems: 'center' }}>
-        <h1 style={{ margin: 0, paddingLeft: 20 }}>OMS Import Assistant</h1>
+        <h1 style={{ margin: 0, paddingLeft: 20, display: 'inline-block' }}>OMS Import Assistant</h1>
+        <Button
+          type="link"
+          style={{ marginLeft: 24, fontSize: 20 }}
+          onClick={() => {
+            setCurrentStep(0);
+            setFileList([]);
+            setData([]);
+            setSelectedRows([]);
+            setSelectedAction(null);
+            setEditData([]);
+            setProcessing(false);
+            setDownloadReady(false);
+            setReviewData([]);
+            setTargetMediaPlanId(null);
+            setShowCopyModal(false);
+            setDownloaded(false);
+            setUploadError(null);
+          }}
+        >
+          Home
+        </Button>
       </Header>
       <Content style={{ padding: '20px' }}>
         <Steps current={currentStep} style={{ marginBottom: '20px' }}>
