@@ -1,12 +1,13 @@
 from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 import pandas as pd
 import os
 from typing import List
 import json
 import numpy as np
 import tempfile
+import redis
 
 app = FastAPI()
 
@@ -27,6 +28,20 @@ TEMP_DATA = {
     "lines_temp": None,  # entitytype=Line 的所有行
     "lines_target_temp": None,  # entitytype=LineTarget 的所有行
 }
+
+REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.environ.get("REDIS_PORT", 6379))
+REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD", None)
+
+redis_client = redis.Redis(
+    host=REDIS_HOST,
+    port=REDIS_PORT,
+    password=REDIS_PASSWORD,
+    decode_responses=True
+)
+
+def get_session_id(request: Request):
+    return request.cookies.get("session_id") or "default"
 
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
@@ -107,6 +122,8 @@ async def process_clone(request: Request):
         review_data = TEMP_DATA["lines_merged_select_update_complete"].to_dict(orient='records')
         print("[DEBUG] review_data总行数:", len(review_data))
         print("[DEBUG] review_data部分预览:", review_data[:2])
+        session_id = get_session_id(request)
+        redis_client.set(f"review_data:{session_id}", json.dumps(review_data), ex=3600)
         return {"success": True, "review_data": review_data, "download_url": "/download_ready_csv"}
     except Exception as e:
         print(f"[DEBUG] process_clone异常: {e}")
@@ -153,6 +170,8 @@ async def process_copy(request: Request):
             lines_merged_select = lines_merged_select.drop(columns=['_original_Id'])
         TEMP_DATA["lines_merged_select_update_complete"] = lines_merged_select.replace({np.nan: None})
         review_data = TEMP_DATA["lines_merged_select_update_complete"].to_dict(orient='records')
+        session_id = get_session_id(request)
+        redis_client.set(f"review_data:{session_id}", json.dumps(review_data), ex=3600)
         return {"success": True, "review_data": review_data, "download_url": "/download_ready_csv"}
     except Exception as e:
         return {"error": str(e)}
@@ -177,17 +196,21 @@ async def process_edit(request: Request):
             lines_merged_select = lines_merged_select.drop(columns=['_original_Id'])
         TEMP_DATA["lines_merged_select_update_complete"] = lines_merged_select.replace({np.nan: None})
         review_data = TEMP_DATA["lines_merged_select_update_complete"].to_dict(orient='records')
+        session_id = get_session_id(request)
+        redis_client.set(f"review_data:{session_id}", json.dumps(review_data), ex=3600)
         return {"success": True, "review_data": review_data, "download_url": "/download_ready_csv"}
     except Exception as e:
         return {"error": str(e)}
 
 @app.get("/download_ready_csv")
-def download_ready_csv():
+def download_ready_csv(request: Request):
+    session_id = get_session_id(request)
+    data = redis_client.get(f"review_data:{session_id}")
+    if not data:
+        return JSONResponse({"error": "No processed data available"})
+    review_data = json.loads(data)
+    df_export = pd.DataFrame(review_data)
     # 导出内存中的最终数据为csv
-    df = TEMP_DATA.get("lines_merged_select_update_complete")
-    if df is None:
-        return {"error": "No processed data available"}
-    df_export = df.copy()
     if 'entitytype' in df_export.columns and 'Id' in df_export.columns:
         # 1. 先为Line分配唯一负数Id
         max_negative_value = -1
