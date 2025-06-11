@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Layout, Steps, Upload, Table, Button, message, Modal, Input } from 'antd';
-import { InboxOutlined } from '@ant-design/icons';
+import { InboxOutlined, HomeOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
 import axios from 'axios';
-import userManual from './userManualContent';
 
 axios.defaults.baseURL = 'https://omsimportassistant-hrhpdxdrbvc3eha9.eastus2-01.azurewebsites.net';
 
@@ -201,6 +200,7 @@ const App: React.FC = () => {
         <h1 style={{ margin: 0, paddingLeft: 20, display: 'inline-block' }}>OMS Import Assistant</h1>
         <Button
           type="link"
+          icon={<HomeOutlined style={{ fontSize: 22 }} />}
           style={{ marginLeft: 24, fontSize: 20 }}
           onClick={() => {
             setCurrentStep(0);
@@ -217,16 +217,13 @@ const App: React.FC = () => {
             setDownloaded(false);
             setUploadError(null);
           }}
-        >
-          Home
-        </Button>
+        />
         <Button
           type="link"
+          icon={<QuestionCircleOutlined style={{ fontSize: 22 }} />}
           style={{ marginLeft: 8, fontSize: 20 }}
           onClick={() => setHelpVisible(true)}
-        >
-          Help
-        </Button>
+        />
       </Header>
       <Content style={{ padding: '20px' }}>
         <Steps current={currentStep} style={{ marginBottom: '20px' }}>
@@ -502,8 +499,23 @@ const App: React.FC = () => {
           width={800}
           bodyStyle={{ maxHeight: 600, overflowY: 'auto' }}
         >
-          <div style={{ whiteSpace: 'pre-wrap', fontSize: 16 }}>
-            {userManual}
+          <div style={{ fontSize: 16 }}>
+            <h2>OMS Import Assistant User Manual</h2>
+            <ol style={{ paddingLeft: 20 }}>
+              <li>Upload your CSV file. The file must contain the required columns: <b>entitytype, Id, customerId, MediaPlanId, PRODUCTID, Name, Description, StartDate, EndDate, Cpm, Cpd, TargetImpressions, TargetSpend, IsReserved, LineType, BudgetScheduleType, Targets, LineId, TargetType, Ids, IsExcluded, AudienceTargetingType, DeviceTypes</b>.</li>
+              <li>After upload, select the data rows you want to operate on. You can filter and page through the data.</li>
+              <li>Choose an action: <b>Clone</b>, <b>Copy</b>, or <b>Edit</b> the selected lines.</li>
+              <li>In Edit Data, you can only edit specific parameters. Read-only fields are greyed out.</li>
+              <li>Review the processed data. Only Line items are shown for review.</li>
+              <li>Download the ready-for-import CSV and import it into your OMS system.</li>
+            </ol>
+            <div style={{ marginTop: 24 }}>
+              <b>For further assistance, please contact:</b>
+              <ul style={{ marginTop: 8 }}>
+                <li>Eric Duerr (<a href="mailto:ericduer@microsoft.com">ericduer@microsoft.com</a>)</li>
+                <li>Neo Cheng (<a href="mailto:neocheng@microsoft.com">neocheng@microsoft.com</a>)</li>
+              </ul>
+            </div>
           </div>
         </Modal>
       </Content>
