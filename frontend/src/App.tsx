@@ -258,7 +258,7 @@ const App: React.FC = () => {
               <Button
                 type="default"
                 style={{ fontWeight: 500 }}
-                href="/download_template"
+                href="https://omsimportassistant-hrhpdxdrbvc3eha9.eastus2-01.azurewebsites.net/download_template"
                 target="_blank"
                 icon={<InboxOutlined />}>
                 Download File Template
