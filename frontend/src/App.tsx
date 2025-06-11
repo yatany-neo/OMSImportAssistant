@@ -114,9 +114,37 @@ const App: React.FC = () => {
   const rowSelection = {
     selectedRowKeys,
     onChange: (keys: React.Key[], rows: any[]) => {
-      setSelectedRowKeys(keys);
-      setSelectedRows(rows);
+      // 合并已选 keys，去重
+      const mergedKeys = Array.from(new Set([...selectedRowKeys, ...keys]));
+      // 只保留当前 data 里存在的行
+      const allRows = [...selectedRows, ...rows];
+      const mergedRows = mergedKeys.map(key => allRows.find(row => row.originalId === key)).filter(Boolean);
+      setSelectedRowKeys(mergedKeys);
+      setSelectedRows(mergedRows);
     },
+    // 当用户取消勾选时，移除对应 key
+    onSelect: (record: any, selected: boolean) => {
+      if (!selected) {
+        setSelectedRowKeys(selectedRowKeys.filter(key => key !== record.originalId));
+        setSelectedRows(selectedRows.filter(row => row.originalId !== record.originalId));
+      }
+    },
+    onSelectAll: (selected: boolean, selectedRowsAll: any[], changeRows: any[]) => {
+      if (selected) {
+        // 全选时合并所有 keys
+        const newKeys = changeRows.map(row => row.originalId);
+        const mergedKeys = Array.from(new Set([...selectedRowKeys, ...newKeys]));
+        const allRows = [...selectedRows, ...changeRows];
+        const mergedRows = mergedKeys.map(key => allRows.find(row => row.originalId === key)).filter(Boolean);
+        setSelectedRowKeys(mergedKeys);
+        setSelectedRows(mergedRows);
+      } else {
+        // 取消全选时移除当前页 keys
+        const removeKeys = changeRows.map(row => row.originalId);
+        setSelectedRowKeys(selectedRowKeys.filter(key => !removeKeys.includes(key)));
+        setSelectedRows(selectedRows.filter(row => !removeKeys.includes(row.originalId)));
+      }
+    }
   };
 
   // 进入第三步时初始化可编辑数据
