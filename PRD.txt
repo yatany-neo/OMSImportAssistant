@@ -28,7 +28,23 @@
 
 2. 完成格式检查后，对于所加载的数据，将 entitytype = "Line" 的行提取出来，保存为临时文件 lines_temp。将 entitytype = "LineTarget" 的行提取出来，保存为临时数据 lines_target_temp。
 
-3. 然后，在UI上展现 lines_temp 的数据，包括列名。在这一步，表格需要展示所有的列（23个字段），即使某些字段为空也要显示出来。当数据较多时，可以翻页。并且允许用户 filter 数据，来展示某些特定数据行。
+3. 然后，在UI上展现 lines_temp 的数据，包括列名。在这一步，表格需要展示如下特定的列，即使某些字段为空也要显示出来。当数据较多时，可以翻页。并且允许用户 filter 数据，来展示某些特定数据行。
+1) entitytype
+2) Id
+3) customerId
+4) MediaPlanId
+5) PRODUCTID
+6) Name
+7) Description
+8) StartDate
+9) EndDate
+10) Cpm
+11) Cpd
+12) TargetImpressions
+13) TargetSpend
+14) IsReserved
+15) LineType
+16) BudgetScheduleType
 
 4. 让用户选择他需要对哪些 rows 进行操作，可以多选 multiple rows，选择完成后，点击下一步，同时系统将用户选择的结果存储为临时数据 post_selection。
 
@@ -190,5 +206,5 @@ e. 将 lines_merged_select_update_complete 导出为新的 csv 文件，命名�
 1) 如果 StartDate/EndDate 只有日期没有时间，StartDate 自动补全为 00:00:00，EndDate 自动补全为 23:59:59。
 2) 如果原本就有时间，则保持原样。
 3）支持“无秒”的时间格式（如 6/1/2025 22:00），会自动补全为 6/1/2025 22:00:00，保证 startdate/enddate 都能正常显示。
-8. 将所有临时数据存储在内存中。
-9. 注意数据格式的一致性，特别是浮点、小数、整数、字符类型的数据，在从 csv 文件读取后，正确处理为一致的数据类型。
+8. 注意数据格式的一致性，特别是浮点、小数、整数、字符类型的数据，在从 csv 文件读取后，正确处理为一致的数据类型。
+9. 使用 redis 来缓存临时文件

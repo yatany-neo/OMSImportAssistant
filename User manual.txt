@@ -1,0 +1,52 @@
+OMS Import Assistant User Guide
+Welcome to the OMS Import Assistant! This tool helps you easily upload, review, edit, and export your OMS data in CSV format. No technical background is required—just follow the steps below.
+________________________________________
+1. Open the Web App
+•	Visit the OMS Import Assistant website: https://yellow-ground-0657c970f.6.azurestaticapps.net/ 
+________________________________________
+2. Upload Your CSV File
+•	Click the Upload File button.
+•	Select your CSV file from your computer. This is a sample csv Media plan export sample - test - Copy.csv.
+•	The tool will automatically check if your file format is correct.
+•	If the file is not correct, you will see a red error message. Please use a correct file and try again.
+________________________________________
+3. Review and Select Data
+•	After a successful upload, your data will be displayed in a table.
+•	You can scroll, filter, and select multiple rows as needed.
+•	Use the checkboxes to select the data you want to process.
+________________________________________
+4. Choose an Action
+•	Click Select Action to choose what you want to do:
+•	Clone: Copy and merge selected data within the plan.
+•	Copy: Copy selected data to another plan.
+•	Edit: Edit the selected data directly.
+________________________________________
+5. Edit Data (Optional)
+•	If you choose Edit or Clone, you can modify the data directly in the table.
+•	Click on any cell to edit its value.
+•	Date fields can be edited in the format: MM/DD/YYYY HH:mm:ss.
+________________________________________
+6. Review and Confirm
+•	Click Review to see a summary of your changes.
+•	Only the main data rows (Line) will be shown for review.
+•	If you need to go back and change something, use the Back button.
+________________________________________
+7. Download the Result
+•	When you are ready, click the Download button.
+•	Your processed data will be downloaded as a CSV file.
+•	Open the CSV file with Excel or any spreadsheet software.
+________________________________________
+8. Tips & Troubleshooting
+•	Upload Button Disabled?
+Make sure you have selected a file before clicking upload.
+•	Error Message?
+Read the message and try uploading a correct file.
+•	Download Not Working?
+Make sure you have completed all steps and see the Download button enabled.
+•	Data Not Displayed Correctly?
+Please use the template provided or contact support.
+________________________________________
+9. Support
+If you have any questions or need help, please contact neocheng@microsoft.com.
+________________________________________
+Enjoy using OMS Import Assistant!

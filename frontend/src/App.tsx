@@ -3,6 +3,7 @@ import { Layout, Steps, Upload, Table, Button, message, Modal, Input } from 'ant
 import { InboxOutlined } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
 import axios from 'axios';
+import userManual from './userManualContent';
 
 axios.defaults.baseURL = 'https://omsimportassistant-hrhpdxdrbvc3eha9.eastus2-01.azurewebsites.net';
 
@@ -25,6 +26,7 @@ const App: React.FC = () => {
   const [downloaded, setDownloaded] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [tableHeight, setTableHeight] = useState(400);
+  const [helpVisible, setHelpVisible] = useState(false);
 
   const columns = [
     { title: 'entitytype', dataIndex: 'entitytype', key: 'entitytype', width: 110, ellipsis: true },
@@ -185,6 +187,14 @@ const App: React.FC = () => {
     return () => window.removeEventListener('resize', updateHeight);
   }, []);
 
+  // Select Data页表格columns只用16列
+  const selectDataFields = [
+    'entitytype', 'Id', 'customerId', 'MediaPlanId', 'PRODUCTID',
+    'Name', 'Description', 'StartDate', 'EndDate', 'Cpm', 'Cpd',
+    'TargetImpressions', 'TargetSpend', 'IsReserved', 'LineType', 'BudgetScheduleType'
+  ];
+  const selectDataColumns = columns.filter(col => selectDataFields.includes(col.dataIndex));
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Header style={{ background: '#fff', padding: 0, height: 80, display: 'flex', alignItems: 'center' }}>
@@ -209,6 +219,13 @@ const App: React.FC = () => {
           }}
         >
           Home
+        </Button>
+        <Button
+          type="link"
+          style={{ marginLeft: 8, fontSize: 20 }}
+          onClick={() => setHelpVisible(true)}
+        >
+          Help
         </Button>
       </Header>
       <Content style={{ padding: '20px' }}>
@@ -247,24 +264,16 @@ const App: React.FC = () => {
         {currentStep === 1 && (
           <div>
             <Table
-              rowSelection={{
-                type: 'checkbox',
-                ...rowSelection,
-              }}
-              columns={columns}
+              columns={selectDataColumns}
               dataSource={data}
+              pagination={{ pageSize: 10 }}
+              rowSelection={rowSelection}
               rowKey="originalId"
-              scroll={{ x: 'max-content', y: tableHeight }}
+              scroll={{ x: true, y: tableHeight }}
             />
             <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
               <Button onClick={() => setCurrentStep(0)}>Back</Button>
-              <Button
-                type="primary"
-                onClick={() => setCurrentStep(2)}
-                disabled={selectedRows.length === 0}
-              >
-                Next
-              </Button>
+              <Button type="primary" onClick={() => setCurrentStep(2)} disabled={selectedRows.length === 0}>Next</Button>
             </div>
           </div>
         )}
@@ -305,45 +314,48 @@ const App: React.FC = () => {
         )}
 
         {currentStep === 3 && (
-          selectedAction === 'copy' ? (
-            <div>
-              <h2>Please edit the lines you want to copy</h2>
-              <Table
-                columns={clonePageColumns}
-                dataSource={editData.map(row => ({ ...row, MediaPlanId: targetMediaPlanId }))}
-                pagination={false}
-                rowKey="originalId"
-              />
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
-                <Button onClick={() => setCurrentStep(2)}>Back</Button>
-                <Button
-                  type="primary"
-                  loading={processing}
-                  onClick={async () => {
-                    setProcessing(true);
-                    try {
-                      const submitData = editData.map(row => ({ ...row, Id: row.originalId, MediaPlanId: targetMediaPlanId }));
-                      const res = await axios.post('/process_copy', { lines: submitData, targetMediaPlanId });
-                      if (res.data && res.data.success) {
-                        setReviewData(res.data.review_data || []);
-                        setDownloadReady(true);
-                        setCurrentStep(4);
-                      } else {
-                        message.error(res.data.error || 'Processing failed');
-                      }
-                    } catch (e) {
-                      message.error('Processing failed');
-                    } finally {
-                      setProcessing(false);
-                    }
-                  }}
-                >
-                  Next
-                </Button>
-              </div>
+          <div>
+            <div style={{ color: '#faad14', fontWeight: 500, marginBottom: 16, fontSize: 16 }}>
+              You're only allowed to edit specific parameters of the line items.
             </div>
-          ) :
-            selectedAction === 'edit' ? (
+            {selectedAction === 'copy' ? (
+              <div>
+                <h2>Please edit the lines you want to copy</h2>
+                <Table
+                  columns={clonePageColumns}
+                  dataSource={editData.map(row => ({ ...row, MediaPlanId: targetMediaPlanId }))}
+                  pagination={false}
+                  rowKey="originalId"
+                />
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
+                  <Button onClick={() => setCurrentStep(2)}>Back</Button>
+                  <Button
+                    type="primary"
+                    loading={processing}
+                    onClick={async () => {
+                      setProcessing(true);
+                      try {
+                        const submitData = editData.map(row => ({ ...row, Id: row.originalId, MediaPlanId: targetMediaPlanId }));
+                        const res = await axios.post('/process_copy', { lines: submitData, targetMediaPlanId });
+                        if (res.data && res.data.success) {
+                          setReviewData(res.data.review_data || []);
+                          setDownloadReady(true);
+                          setCurrentStep(4);
+                        } else {
+                          message.error(res.data.error || 'Processing failed');
+                        }
+                      } catch (e) {
+                        message.error('Processing failed');
+                      } finally {
+                        setProcessing(false);
+                      }
+                    }}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            ) : selectedAction === 'edit' ? (
               <div>
                 <h2>Please edit the lines you want to update</h2>
                 <Table
@@ -417,7 +429,8 @@ const App: React.FC = () => {
                   </Button>
                 </div>
               </div>
-            )
+            )}
+          </div>
         )}
 
         {currentStep === 4 && (
@@ -479,6 +492,19 @@ const App: React.FC = () => {
             value={targetMediaPlanId || ''}
             onChange={e => setTargetMediaPlanId(e.target.value)}
           />
+        </Modal>
+
+        <Modal
+          title="User Manual"
+          open={helpVisible}
+          onCancel={() => setHelpVisible(false)}
+          footer={null}
+          width={800}
+          bodyStyle={{ maxHeight: 600, overflowY: 'auto' }}
+        >
+          <div style={{ whiteSpace: 'pre-wrap', fontSize: 16 }}>
+            {userManual}
+          </div>
         </Modal>
       </Content>
     </Layout>
