@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Steps, Upload, Table, Button, message, Modal, Input } from 'antd';
+import { Layout, Steps, Upload, Table, Button, message, Modal, Input, DatePicker, AutoComplete } from 'antd';
 import { InboxOutlined, HomeOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
+import type { FilterDropdownProps } from 'antd/es/table/interface';
 import axios from 'axios';
+import dayjs from 'dayjs';
 
 axios.defaults.baseURL = 'https://omsimportassistant-hrhpdxdrbvc3eha9.eastus2-01.azurewebsites.net';
 
 const { Header, Content } = Layout;
 const { Dragger } = Upload;
 const { Step } = Steps;
+const { RangePicker } = DatePicker;
 
 const App: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -26,6 +29,12 @@ const App: React.FC = () => {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [tableHeight, setTableHeight] = useState(400);
   const [helpVisible, setHelpVisible] = useState(false);
+  const [idFilter, setIdFilter] = useState<string[]>([]);
+  const [idInput, setIdInput] = useState('');
+  const [nameFilter, setNameFilter] = useState('');
+  const [descFilter, setDescFilter] = useState('');
+  const [dateRange, setDateRange] = useState<[string, string] | null>(null);
+  const [resetModalVisible, setResetModalVisible] = useState(false);
 
   const columns = [
     { title: 'entitytype', dataIndex: 'entitytype', key: 'entitytype', width: 110, ellipsis: true },
@@ -192,7 +201,147 @@ const App: React.FC = () => {
     'Name', 'Description', 'StartDate', 'EndDate', 'Cpm', 'Cpd',
     'TargetImpressions', 'TargetSpend', 'IsReserved', 'LineType', 'BudgetScheduleType'
   ];
-  const selectDataColumns = columns.filter(col => selectDataFields.includes(col.dataIndex));
+
+  // 过滤逻辑
+  const filteredData = data.filter(row => {
+    if (idFilter.length > 0 && !idFilter.includes(String(row.Id))) return false;
+    if (nameFilter && !(row.Name || '').toLowerCase().includes(nameFilter.toLowerCase())) return false;
+    if (descFilter && !(row.Description || '').toLowerCase().includes(descFilter.toLowerCase())) return false;
+    if (dateRange) {
+      const s = row.StartDate ? dayjs(row.StartDate) : null;
+      const e = row.EndDate ? dayjs(row.EndDate) : null;
+      if (dateRange[0] && (!s || s.isBefore(dayjs(dateRange[0]), 'day'))) return false;
+      if (dateRange[1] && (!e || e.isAfter(dayjs(dateRange[1]), 'day'))) return false;
+    }
+    return true;
+  });
+
+  // Id下拉选项
+  const idOptions = Array.from(new Set(data.map(row => String(row.Id))))
+    .filter(id => id.includes(idInput))
+    .map(id => ({ value: id }));
+
+  const selectDataColumns = columns.filter(col => selectDataFields.includes(col.dataIndex)).map(col => {
+    if (col.dataIndex === 'Id') {
+      return {
+        ...col,
+        filterDropdown: () => (
+          <div style={{ padding: 8, width: 200 }}>
+            <AutoComplete
+              style={{ width: '100%' }}
+              options={idOptions}
+              value={idInput}
+              onChange={v => {
+                setIdInput(v);
+              }}
+              onSelect={v => {
+                if (!idFilter.includes(v)) setIdFilter([...idFilter, v]);
+                setIdInput('');
+              }}
+              placeholder="Type to search Id"
+              allowClear
+            />
+            <div style={{ marginTop: 8, minHeight: 32 }}>
+              {idFilter.map(id => (
+                <span key={id} style={{ display: 'inline-block', background: '#e6f7ff', borderRadius: 4, padding: '2px 8px', margin: 2 }}>
+                  {id} <button onClick={() => setIdFilter(idFilter.filter(i => i !== id))} style={{ color: '#1890ff', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} aria-label="Remove Id">x</button>
+                </span>
+              ))}
+            </div>
+          </div>
+        ),
+        filterIcon: (filtered: boolean) => <span style={{ color: idFilter.length ? '#1890ff' : undefined }}>🔍</span>,
+        filteredValue: idFilter.length ? idFilter : null,
+      };
+    }
+    if (col.dataIndex === 'Name') {
+      return {
+        ...col,
+        filterDropdown: (props: FilterDropdownProps) => (
+          <div style={{ padding: 8 }}>
+            <Input
+              placeholder="Search Name"
+              value={nameFilter}
+              onChange={e => setNameFilter(e.target.value)}
+              onPressEnter={() => props.confirm()}
+              style={{ width: 188, marginBottom: 8, display: 'block' }}
+            />
+            <Button
+              type="primary"
+              onClick={() => props.confirm()}
+              icon={<InboxOutlined />}
+              size="small"
+              style={{ width: 90, marginRight: 8 }}
+            >
+              Search
+            </Button>
+            <Button onClick={() => { setNameFilter(''); props.clearFilters?.(); }} size="small" style={{ width: 90 }}>
+              Reset
+            </Button>
+          </div>
+        ),
+        filterIcon: (filtered: boolean) => <span style={{ color: nameFilter ? '#1890ff' : undefined }}>🔍</span>,
+        filteredValue: nameFilter ? [nameFilter] : null,
+      };
+    }
+    if (col.dataIndex === 'Description') {
+      return {
+        ...col,
+        filterDropdown: (props: FilterDropdownProps) => (
+          <div style={{ padding: 8 }}>
+            <Input
+              placeholder="Search Description"
+              value={descFilter}
+              onChange={e => setDescFilter(e.target.value)}
+              onPressEnter={() => props.confirm()}
+              style={{ width: 188, marginBottom: 8, display: 'block' }}
+            />
+            <Button
+              type="primary"
+              onClick={() => props.confirm()}
+              icon={<InboxOutlined />}
+              size="small"
+              style={{ width: 90, marginRight: 8 }}
+            >
+              Search
+            </Button>
+            <Button onClick={() => { setDescFilter(''); props.clearFilters?.(); }} size="small" style={{ width: 90 }}>
+              Reset
+            </Button>
+          </div>
+        ),
+        filterIcon: (filtered: boolean) => <span style={{ color: descFilter ? '#1890ff' : undefined }}>🔍</span>,
+        filteredValue: descFilter ? [descFilter] : null,
+      };
+    }
+    if (col.dataIndex === 'StartDate' || col.dataIndex === 'EndDate') {
+      return {
+        ...col,
+        filterDropdown: (props: FilterDropdownProps) => (
+          <div style={{ padding: 8 }}>
+            <RangePicker
+              value={dateRange ? [
+                dateRange[0] ? dayjs(dateRange[0]) : null,
+                dateRange[1] ? dayjs(dateRange[1]) : null
+              ] : null}
+              onChange={dates => {
+                if (dates) setDateRange([dates[0]?.format('YYYY-MM-DD') || '', dates[1]?.format('YYYY-MM-DD') || '']);
+                else setDateRange(null);
+              }}
+              style={{ width: 220 }}
+            />
+            <div style={{ marginTop: 8 }}>
+              <Button type="primary" onClick={() => props.confirm()} size="small" style={{ width: 90, marginRight: 8 }}>Search</Button>
+              <Button onClick={() => { setDateRange(null); props.clearFilters?.(); }} size="small" style={{ width: 90 }}>Reset</Button>
+            </div>
+          </div>
+        ),
+        filterIcon: (filtered: boolean) => <span style={{ color: dateRange ? '#1890ff' : undefined }}>📅</span>,
+        filteredValue: dateRange ? [dateRange.join(',')] : null,
+      };
+    }
+    return col;
+  });
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -271,7 +420,7 @@ const App: React.FC = () => {
           <div>
             <Table
               columns={selectDataColumns}
-              dataSource={data}
+              dataSource={filteredData}
               pagination={{ pageSize: 10 }}
               rowSelection={rowSelection}
               rowKey="originalId"
@@ -279,8 +428,25 @@ const App: React.FC = () => {
             />
             <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
               <Button onClick={() => setCurrentStep(0)}>Back</Button>
+              <Button
+                type="default"
+                onClick={() => setResetModalVisible(true)}
+                style={{ fontWeight: 500 }}
+              >
+                Reset Selection
+              </Button>
               <Button type="primary" onClick={() => setCurrentStep(2)} disabled={selectedRows.length === 0}>Next</Button>
             </div>
+            <Modal
+              title="Confirm Reset Selection"
+              open={resetModalVisible}
+              onOk={() => { setSelectedRows([]); setResetModalVisible(false); }}
+              onCancel={() => setResetModalVisible(false)}
+              okText="Yes, clear all"
+              cancelText="Cancel"
+            >
+              Are you sure you want to clear all selected rows?
+            </Modal>
           </div>
         )}
 
