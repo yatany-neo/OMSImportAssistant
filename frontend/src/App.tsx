@@ -35,6 +35,11 @@ const App: React.FC = () => {
   const [descFilter, setDescFilter] = useState('');
   const [dateRange, setDateRange] = useState<[string, string] | null>(null);
   const [resetModalVisible, setResetModalVisible] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [nameFilterInput, setNameFilterInput] = useState('');
+  const [descFilterInput, setDescFilterInput] = useState('');
+  const [dateRangeInput, setDateRangeInput] = useState<[string, string] | null>(null);
+  const [pageSize, setPageSize] = useState(20);
 
   const columns = [
     { title: 'entitytype', dataIndex: 'entitytype', key: 'entitytype', width: 110, ellipsis: true },
@@ -107,8 +112,10 @@ const App: React.FC = () => {
   };
 
   const rowSelection = {
-    onChange: (selectedRowKeys: React.Key[], selectedRows: any[]) => {
-      setSelectedRows(selectedRows);
+    selectedRowKeys,
+    onChange: (keys: React.Key[], rows: any[]) => {
+      setSelectedRowKeys(keys);
+      setSelectedRows(rows);
     },
   };
 
@@ -129,60 +136,32 @@ const App: React.FC = () => {
   // 只读字段
   const readOnlyFields = ['Id', 'entitytype', 'customerId', 'MediaPlanId', 'PRODUCTID'];
 
+  // 1. 定义通用排序器
+  const getSorter = (dataIndex: string) => {
+    if ([
+      'Id', 'customerId', 'MediaPlanId', 'PRODUCTID', 'Cpm', 'Cpd', 'TargetImpressions', 'TargetSpend', 'LineId', 'Ids'
+    ].includes(dataIndex)) {
+      return (a: any, b: any) => Number(a[dataIndex] || 0) - Number(b[dataIndex] || 0);
+    }
+    if ([
+      'StartDate', 'EndDate'
+    ].includes(dataIndex)) {
+      return (a: any, b: any) => {
+        const da = a[dataIndex] ? dayjs(a[dataIndex]) : dayjs(0);
+        const db = b[dataIndex] ? dayjs(b[dataIndex]) : dayjs(0);
+        return da.valueOf() - db.valueOf();
+      };
+    }
+    return (a: any, b: any) => (a[dataIndex] || '').toString().localeCompare((b[dataIndex] || '').toString());
+  };
+
   // 只用于显示的columns
   const clonePageColumns = columns.filter(col => clonePageFields.includes(col.dataIndex)).map(col => {
-    if (readOnlyFields.includes(col.dataIndex)) {
-      return {
-        ...col,
-        render: (text: any) => <span>{text}</span>,
-      };
-    }
-    if (col.dataIndex === 'StartDate' || col.dataIndex === 'EndDate') {
-      return {
-        ...col,
-        render: (text: any, record: any, idx: number) => (
-          <Input
-            style={{ width: 160 }}
-            value={
-              (() => {
-                const v = text || '';
-                // 只日期
-                if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(v.trim())) {
-                  return col.dataIndex === 'EndDate'
-                    ? v.trim() + ' 23:59:59'
-                    : v.trim() + ' 00:00:00';
-                }
-                // 日期+时:分（无秒）
-                if (/^\d{1,2}\/\d{1,2}\/\d{4} \d{1,2}:\d{2}$/.test(v.trim())) {
-                  return v.trim() + ':00';
-                }
-                return v;
-              })()
-            }
-            onChange={e => {
-              const newData = [...editData];
-              newData[idx][col.dataIndex] = e.target.value;
-              setEditData(newData);
-            }}
-            placeholder={col.dataIndex === 'EndDate' ? 'M/D/YYYY HH:mm:ss' : 'M/D/YYYY HH:mm:ss'}
-          />
-        ),
-      };
-    }
     return {
       ...col,
-      render: (text: any, record: any, idx: number) => (
-        <Input
-          style={col.dataIndex === 'Name' ? { width: 200 } : undefined}
-          value={text || ''}
-          onChange={e => {
-            const newData = [...editData];
-            newData[idx][col.dataIndex] = e.target.value;
-            setEditData(newData);
-          }}
-        />
-      ),
-    };
+      ...(readOnlyFields.includes(col.dataIndex) ? { render: (text: any) => <span>{text}</span> } : {}),
+      sorter: getSorter(col.dataIndex),
+    } as any;
   });
 
   // review页只展示entitytype=Line的数据
@@ -252,6 +231,7 @@ const App: React.FC = () => {
         ),
         filterIcon: (filtered: boolean) => <span style={{ color: idFilter.length ? '#1890ff' : undefined }}>🔍</span>,
         filteredValue: idFilter.length ? idFilter : null,
+        sorter: getSorter(col.dataIndex),
       };
     }
     if (col.dataIndex === 'Name') {
@@ -261,27 +241,28 @@ const App: React.FC = () => {
           <div style={{ padding: 8 }}>
             <Input
               placeholder="Search Name"
-              value={nameFilter}
-              onChange={e => setNameFilter(e.target.value)}
-              onPressEnter={() => props.confirm()}
+              value={nameFilterInput}
+              onChange={e => setNameFilterInput(e.target.value)}
+              onPressEnter={() => { setNameFilter(nameFilterInput); props.confirm(); }}
               style={{ width: 188, marginBottom: 8, display: 'block' }}
             />
             <Button
               type="primary"
-              onClick={() => props.confirm()}
+              onClick={() => { setNameFilter(nameFilterInput); props.confirm(); }}
               icon={<InboxOutlined />}
               size="small"
               style={{ width: 90, marginRight: 8 }}
             >
               Search
             </Button>
-            <Button onClick={() => { setNameFilter(''); props.clearFilters?.(); }} size="small" style={{ width: 90 }}>
+            <Button onClick={() => { setNameFilterInput(''); setNameFilter(''); props.clearFilters?.(); }} size="small" style={{ width: 90 }}>
               Reset
             </Button>
           </div>
         ),
         filterIcon: (filtered: boolean) => <span style={{ color: nameFilter ? '#1890ff' : undefined }}>🔍</span>,
         filteredValue: nameFilter ? [nameFilter] : null,
+        sorter: getSorter(col.dataIndex),
       };
     }
     if (col.dataIndex === 'Description') {
@@ -291,27 +272,28 @@ const App: React.FC = () => {
           <div style={{ padding: 8 }}>
             <Input
               placeholder="Search Description"
-              value={descFilter}
-              onChange={e => setDescFilter(e.target.value)}
-              onPressEnter={() => props.confirm()}
+              value={descFilterInput}
+              onChange={e => setDescFilterInput(e.target.value)}
+              onPressEnter={() => { setDescFilter(descFilterInput); props.confirm(); }}
               style={{ width: 188, marginBottom: 8, display: 'block' }}
             />
             <Button
               type="primary"
-              onClick={() => props.confirm()}
+              onClick={() => { setDescFilter(descFilterInput); props.confirm(); }}
               icon={<InboxOutlined />}
               size="small"
               style={{ width: 90, marginRight: 8 }}
             >
               Search
             </Button>
-            <Button onClick={() => { setDescFilter(''); props.clearFilters?.(); }} size="small" style={{ width: 90 }}>
+            <Button onClick={() => { setDescFilterInput(''); setDescFilter(''); props.clearFilters?.(); }} size="small" style={{ width: 90 }}>
               Reset
             </Button>
           </div>
         ),
         filterIcon: (filtered: boolean) => <span style={{ color: descFilter ? '#1890ff' : undefined }}>🔍</span>,
         filteredValue: descFilter ? [descFilter] : null,
+        sorter: getSorter(col.dataIndex),
       };
     }
     if (col.dataIndex === 'StartDate' || col.dataIndex === 'EndDate') {
@@ -320,28 +302,37 @@ const App: React.FC = () => {
         filterDropdown: (props: FilterDropdownProps) => (
           <div style={{ padding: 8 }}>
             <RangePicker
-              value={dateRange ? [
-                dateRange[0] ? dayjs(dateRange[0]) : null,
-                dateRange[1] ? dayjs(dateRange[1]) : null
+              value={dateRangeInput ? [
+                dateRangeInput[0] ? dayjs(dateRangeInput[0]) : null,
+                dateRangeInput[1] ? dayjs(dateRangeInput[1]) : null
               ] : null}
               onChange={dates => {
-                if (dates) setDateRange([dates[0]?.format('YYYY-MM-DD') || '', dates[1]?.format('YYYY-MM-DD') || '']);
-                else setDateRange(null);
+                if (dates) setDateRangeInput([dates[0]?.format('YYYY-MM-DD') || '', dates[1]?.format('YYYY-MM-DD') || '']);
+                else setDateRangeInput(null);
               }}
               style={{ width: 220 }}
             />
             <div style={{ marginTop: 8 }}>
-              <Button type="primary" onClick={() => props.confirm()} size="small" style={{ width: 90, marginRight: 8 }}>Search</Button>
-              <Button onClick={() => { setDateRange(null); props.clearFilters?.(); }} size="small" style={{ width: 90 }}>Reset</Button>
+              <Button type="primary" onClick={() => { setDateRange(dateRangeInput); props.confirm(); }} size="small" style={{ width: 90, marginRight: 8 }}>Search</Button>
+              <Button onClick={() => { setDateRangeInput(null); setDateRange(null); props.clearFilters?.(); }} size="small" style={{ width: 90 }}>Reset</Button>
             </div>
           </div>
         ),
         filterIcon: (filtered: boolean) => <span style={{ color: dateRange ? '#1890ff' : undefined }}>📅</span>,
         filteredValue: dateRange ? [dateRange.join(',')] : null,
+        sorter: getSorter(col.dataIndex),
       };
     }
-    return col;
+    return {
+      ...col,
+      sorter: getSorter(col.dataIndex),
+    } as any;
   });
+
+  const sortableColumns = columns.map(col => ({
+    ...col,
+    sorter: getSorter(col.dataIndex),
+  })) as any[];
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -421,7 +412,12 @@ const App: React.FC = () => {
             <Table
               columns={selectDataColumns}
               dataSource={filteredData}
-              pagination={{ pageSize: 10 }}
+              pagination={{
+                pageSize,
+                pageSizeOptions: ['10', '20', '50', '100'],
+                showSizeChanger: true,
+                onShowSizeChange: (current, size) => setPageSize(size),
+              }}
               rowSelection={rowSelection}
               rowKey="originalId"
               scroll={{ x: true, y: tableHeight }}
@@ -440,7 +436,7 @@ const App: React.FC = () => {
             <Modal
               title="Confirm Reset Selection"
               open={resetModalVisible}
-              onOk={() => { setSelectedRows([]); setResetModalVisible(false); }}
+              onOk={() => { setSelectedRows([]); setSelectedRowKeys([]); setResetModalVisible(false); }}
               onCancel={() => setResetModalVisible(false)}
               okText="Yes, clear all"
               cancelText="Cancel"
@@ -496,7 +492,12 @@ const App: React.FC = () => {
                 <Table
                   columns={clonePageColumns}
                   dataSource={editData.map(row => ({ ...row, MediaPlanId: targetMediaPlanId }))}
-                  pagination={false}
+                  pagination={{
+                    pageSize,
+                    pageSizeOptions: ['10', '20', '50', '100'],
+                    showSizeChanger: true,
+                    onShowSizeChange: (current, size) => setPageSize(size),
+                  }}
                   rowKey="originalId"
                   scroll={{ x: true }}
                 />
@@ -534,7 +535,12 @@ const App: React.FC = () => {
                 <Table
                   columns={clonePageColumns}
                   dataSource={editData}
-                  pagination={false}
+                  pagination={{
+                    pageSize,
+                    pageSizeOptions: ['10', '20', '50', '100'],
+                    showSizeChanger: true,
+                    onShowSizeChange: (current, size) => setPageSize(size),
+                  }}
                   rowKey="originalId"
                   scroll={{ x: true }}
                 />
@@ -572,7 +578,12 @@ const App: React.FC = () => {
                 <Table
                   columns={clonePageColumns}
                   dataSource={editData}
-                  pagination={false}
+                  pagination={{
+                    pageSize,
+                    pageSizeOptions: ['10', '20', '50', '100'],
+                    showSizeChanger: true,
+                    onShowSizeChange: (current, size) => setPageSize(size),
+                  }}
                   rowKey="originalId"
                   scroll={{ x: true }}
                 />
@@ -616,7 +627,12 @@ const App: React.FC = () => {
               dataSource={selectedAction === 'copy'
                 ? reviewLineOnly(reviewData).map(row => ({ ...row, MediaPlanId: targetMediaPlanId }))
                 : reviewLineOnly(reviewData)}
-              pagination={false}
+              pagination={{
+                pageSize,
+                pageSizeOptions: ['10', '20', '50', '100'],
+                showSizeChanger: true,
+                onShowSizeChange: (current, size) => setPageSize(size),
+              }}
               rowKey="originalId"
               scroll={{ x: true }}
             />
