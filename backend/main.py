@@ -16,7 +16,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://zealous-water-097e55b1e.6.azurestaticapps.net"
+        "https://zealous-water-097e55b1e.6.azurestaticapps.net",
+        "https://yellow-ground-0657c970f.6.azurestaticapps.net"
     ],
     allow_credentials=True,
     allow_methods=["*"],
