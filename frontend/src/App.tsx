@@ -247,14 +247,23 @@ const App: React.FC = () => {
             {uploadError && (
               <div style={{ color: 'red', marginTop: 12, marginBottom: 0 }}>{uploadError}</div>
             )}
-            <Button
-              type="primary"
-              onClick={handleUpload}
-              style={{ marginTop: '20px' }}
-              disabled={fileList.length === 0}
-            >
-              {fileList.length === 0 ? 'Please select a file' : 'Upload'}
-            </Button>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
+              <Button
+                type="primary"
+                onClick={handleUpload}
+                disabled={fileList.length === 0}
+              >
+                {fileList.length === 0 ? 'Please select a file' : 'Upload'}
+              </Button>
+              <Button
+                type="default"
+                style={{ fontWeight: 500 }}
+                href="/download_template"
+                target="_blank"
+                icon={<InboxOutlined />}>
+                Download File Template
+              </Button>
+            </div>
           </div>
         )}
 

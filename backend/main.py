@@ -265,6 +265,13 @@ def download_ready_csv(request: Request):
         tmp.flush()
         return FileResponse(tmp.name, filename="ready_for_import.csv")
 
+@app.get("/download_template")
+def download_template():
+    # 获取项目根目录
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    template_path = os.path.join(base_dir, 'File template.csv')
+    return FileResponse(template_path, filename="OMS_Import_Template.csv", media_type='text/csv')
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000) 
