@@ -323,6 +323,7 @@ const App: React.FC = () => {
                   dataSource={editData.map(row => ({ ...row, MediaPlanId: targetMediaPlanId }))}
                   pagination={false}
                   rowKey="originalId"
+                  scroll={{ x: true }}
                 />
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
                   <Button onClick={() => setCurrentStep(2)}>Back</Button>
@@ -360,6 +361,7 @@ const App: React.FC = () => {
                   dataSource={editData}
                   pagination={false}
                   rowKey="originalId"
+                  scroll={{ x: true }}
                 />
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
                   <Button onClick={() => setCurrentStep(2)}>Back</Button>
@@ -397,6 +399,7 @@ const App: React.FC = () => {
                   dataSource={editData}
                   pagination={false}
                   rowKey="originalId"
+                  scroll={{ x: true }}
                 />
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
                   <Button onClick={() => setCurrentStep(2)}>Back</Button>
