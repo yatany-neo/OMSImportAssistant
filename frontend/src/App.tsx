@@ -329,11 +329,6 @@ const App: React.FC = () => {
     } as any;
   });
 
-  const sortableColumns = columns.map(col => ({
-    ...col,
-    sorter: getSorter(col.dataIndex),
-  })) as any[];
-
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Header style={{ background: '#fff', padding: 0, height: 80, display: 'flex', alignItems: 'center' }}>
