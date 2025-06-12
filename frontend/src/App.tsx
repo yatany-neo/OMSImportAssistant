@@ -238,14 +238,16 @@ const App: React.FC = () => {
     body: {
       cell: (props: any) => {
         const { dataIndex, record, children, ...restProps } = props;
-        const editable = !getReadOnlyFields(selectedAction).includes(dataIndex.toLowerCase());
+        // 先判断 dataIndex 是否为字符串
+        const isString = typeof dataIndex === 'string';
+        const editable = isString ? !getReadOnlyFields(selectedAction).includes(dataIndex.toLowerCase()) : false;
         
         if (!editable) {
           return <td {...restProps}>{children}</td>;
         }
 
         let input;
-        if (dataIndex.toLowerCase() === 'isreserved') {
+        if (isString && dataIndex.toLowerCase() === 'isreserved') {
           input = (
             <Select
               defaultValue={record[dataIndex]}
@@ -266,11 +268,11 @@ const App: React.FC = () => {
         } else {
           input = (
             <Input
-              defaultValue={record[dataIndex]}
+              defaultValue={isString ? record[dataIndex] : ''}
               onChange={(e) => {
                 const newData = [...editData];
                 const index = newData.findIndex(item => item.originalId === record.originalId);
-                if (index > -1) {
+                if (index > -1 && isString) {
                   newData[index] = { ...newData[index], [dataIndex]: e.target.value };
                   setEditData(newData);
                 }
