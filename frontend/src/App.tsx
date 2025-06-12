@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Steps, Upload, Table, Button, message, Modal, Input, DatePicker, AutoComplete } from 'antd';
+import { Layout, Steps, Upload, Table, Button, message, Modal, Input, DatePicker, AutoComplete, Progress } from 'antd';
 import { InboxOutlined, HomeOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
 import type { FilterDropdownProps } from 'antd/es/table/interface';
@@ -24,6 +24,7 @@ const App: React.FC = () => {
   const [downloadReady, setDownloadReady] = useState(false);
   const [reviewData, setReviewData] = useState<any[]>([]);
   const [targetMediaPlanId, setTargetMediaPlanId] = useState<string | null>(null);
+  const [targetOpportunityId, setTargetOpportunityId] = useState<string | null>(null);
   const [showCopyModal, setShowCopyModal] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -40,140 +41,17 @@ const App: React.FC = () => {
   const [descFilterInput, setDescFilterInput] = useState('');
   const [dateRangeInput, setDateRangeInput] = useState<[string, string] | null>(null);
   const [pageSize, setPageSize] = useState(20);
-
-  const columns = [
-    { title: 'entitytype', dataIndex: 'entitytype', key: 'entitytype', width: 110, ellipsis: true },
-    { title: 'Id', dataIndex: 'Id', key: 'Id', width: 80, ellipsis: true },
-    { title: 'customerId', dataIndex: 'customerId', key: 'customerId', width: 120, ellipsis: true },
-    { title: 'MediaPlanId', dataIndex: 'MediaPlanId', key: 'MediaPlanId', width: 120, ellipsis: true },
-    { title: 'PRODUCTID', dataIndex: 'PRODUCTID', key: 'PRODUCTID', width: 110, ellipsis: true },
-    { title: 'Name', dataIndex: 'Name', key: 'Name', width: 180, ellipsis: true },
-    { title: 'Description', dataIndex: 'Description', key: 'Description', width: 200, ellipsis: true },
-    { title: 'StartDate', dataIndex: 'StartDate', key: 'StartDate', width: 140, ellipsis: true },
-    { title: 'EndDate', dataIndex: 'EndDate', key: 'EndDate', width: 140, ellipsis: true },
-    { title: 'Cpm', dataIndex: 'Cpm', key: 'Cpm', width: 80, ellipsis: true },
-    { title: 'Cpd', dataIndex: 'Cpd', key: 'Cpd', width: 80, ellipsis: true },
-    { title: 'TargetImpressions', dataIndex: 'TargetImpressions', key: 'TargetImpressions', width: 140, ellipsis: true },
-    { title: 'TargetSpend', dataIndex: 'TargetSpend', key: 'TargetSpend', width: 120, ellipsis: true },
-    { title: 'IsReserved', dataIndex: 'IsReserved', key: 'IsReserved', width: 110, ellipsis: true },
-    { title: 'LineType', dataIndex: 'LineType', key: 'LineType', width: 110, ellipsis: true },
-    { title: 'BudgetScheduleType', dataIndex: 'BudgetScheduleType', key: 'BudgetScheduleType', width: 140, ellipsis: true },
-    { title: 'Targets', dataIndex: 'Targets', key: 'Targets', width: 120, ellipsis: true },
-    { title: 'LineId', dataIndex: 'LineId', key: 'LineId', width: 100, ellipsis: true },
-    { title: 'TargetType', dataIndex: 'TargetType', key: 'TargetType', width: 110, ellipsis: true },
-    { title: 'Ids', dataIndex: 'Ids', key: 'Ids', width: 100, ellipsis: true },
-    { title: 'IsExcluded', dataIndex: 'IsExcluded', key: 'IsExcluded', width: 110, ellipsis: true },
-    { title: 'AudienceTargetingType', dataIndex: 'AudienceTargetingType', key: 'AudienceTargetingType', width: 160, ellipsis: true },
-    { title: 'DeviceTypes', dataIndex: 'DeviceTypes', key: 'DeviceTypes', width: 140, ellipsis: true },
-  ];
-
-  const uploadProps: UploadProps = {
-    name: 'file',
-    multiple: false,
-    accept: '.csv',
-    fileList,
-    beforeUpload: (file) => {
-      setFileList([file]);
-      setUploadError(null);
-      return false;
-    },
-    onRemove: () => {
-      setFileList([]);
-      setUploadError(null);
-    },
-  };
-
-  const handleUpload = async () => {
-    if (fileList.length === 0) {
-      setUploadError('Please select a file first');
-      return;
-    }
-    const formData = new FormData();
-    formData.append('file', fileList[0]);
-    try {
-      const response = await axios.post('/upload', formData);
-      if (response.data.error) {
-        setUploadError('You uploaded a file with incorrect format, please use another file.');
-        setTimeout(() => setFileList([]), 300);
-      } else {
-        setUploadError(null);
-        message.success('File uploaded successfully');
-        setCurrentStep(1);
-        // 获取数据
-        const dataResponse = await axios.get('/lines');
-        // 为每一行加originalId
-        const withOriginalId = (dataResponse.data.data || []).map((row: any) => ({ ...row, originalId: row.Id }));
-        setData(withOriginalId);
-      }
-    } catch (error) {
-      setUploadError('Upload failed, please try again.');
-      setTimeout(() => setFileList([]), 300);
-    }
-  };
-
-  const rowSelection = {
-    selectedRowKeys,
-    onChange: (keys: React.Key[], rows: any[]) => {
-      // 合并已选 keys，去重
-      const mergedKeys = Array.from(new Set([...selectedRowKeys, ...keys]));
-      // 只保留当前 data 里存在的行
-      const allRows = [...selectedRows, ...rows];
-      const mergedRows = mergedKeys.map(key => allRows.find(row => row.originalId === key)).filter(Boolean);
-      setSelectedRowKeys(mergedKeys);
-      setSelectedRows(mergedRows);
-    },
-    // 当用户取消勾选时，移除对应 key
-    onSelect: (record: any, selected: boolean) => {
-      if (!selected) {
-        setSelectedRowKeys(selectedRowKeys.filter(key => key !== record.originalId));
-        setSelectedRows(selectedRows.filter(row => row.originalId !== record.originalId));
-      }
-    },
-    onSelectAll: (selected: boolean, selectedRowsAll: any[], changeRows: any[]) => {
-      if (selected) {
-        // 全选时合并所有 keys
-        const newKeys = changeRows.map(row => row.originalId);
-        const mergedKeys = Array.from(new Set([...selectedRowKeys, ...newKeys]));
-        const allRows = [...selectedRows, ...changeRows];
-        const mergedRows = mergedKeys.map(key => allRows.find(row => row.originalId === key)).filter(Boolean);
-        setSelectedRowKeys(mergedKeys);
-        setSelectedRows(mergedRows);
-      } else {
-        // 取消全选时移除当前页 keys
-        const removeKeys = changeRows.map(row => row.originalId);
-        setSelectedRowKeys(selectedRowKeys.filter(key => !removeKeys.includes(key)));
-        setSelectedRows(selectedRows.filter(row => !removeKeys.includes(row.originalId)));
-      }
-    }
-  };
-
-  // 进入第三步时初始化可编辑数据
-  useEffect(() => {
-    if (currentStep === 3 && selectedRows.length > 0) {
-      setEditData(selectedRows.map(row => ({ ...row, originalId: row.originalId })));
-    }
-  }, [currentStep, selectedRows]);
-
-  // 克隆/编辑页面只显示的16个字段
-  const clonePageFields = [
-    'entitytype', 'Id', 'customerId', 'MediaPlanId', 'PRODUCTID',
-    'Name', 'Description', 'StartDate', 'EndDate', 'Cpm', 'Cpd',
-    'TargetImpressions', 'TargetSpend', 'IsReserved', 'LineType', 'BudgetScheduleType'
-  ];
-
-  // 只读字段
-  const readOnlyFields = ['Id', 'entitytype', 'customerId', 'MediaPlanId', 'PRODUCTID'];
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState(0);
 
   // 1. 定义通用排序器
   const getSorter = (dataIndex: string) => {
     if ([
-      'Id', 'customerId', 'MediaPlanId', 'PRODUCTID', 'Cpm', 'Cpd', 'TargetImpressions', 'TargetSpend', 'LineId', 'Ids'
+      'Id', 'CustomerId', 'MediaPlanId', 'OpportunityId', 'PublisherId', 'ProductId', 'Cpm', 'Cpd', 'TargetImpressions', 'TargetSpend'
     ].includes(dataIndex)) {
       return (a: any, b: any) => Number(a[dataIndex] || 0) - Number(b[dataIndex] || 0);
     }
-    if ([
-      'StartDate', 'EndDate'
-    ].includes(dataIndex)) {
+    if (["StartDate", "EndDate"].includes(dataIndex)) {
       return (a: any, b: any) => {
         const da = a[dataIndex] ? dayjs(a[dataIndex]) : dayjs(0);
         const db = b[dataIndex] ? dayjs(b[dataIndex]) : dayjs(0);
@@ -183,96 +61,45 @@ const App: React.FC = () => {
     return (a: any, b: any) => (a[dataIndex] || '').toString().localeCompare((b[dataIndex] || '').toString());
   };
 
-  // 只用于显示的columns
-  const clonePageColumns = columns.filter(col => clonePageFields.includes(col.dataIndex)).map(col => {
-    if (readOnlyFields.includes(col.dataIndex)) {
-      return {
-        ...col,
-        render: (text: any) => <span>{text}</span>,
-        sorter: getSorter(col.dataIndex),
-      } as any;
-    }
-    if (col.dataIndex === 'StartDate' || col.dataIndex === 'EndDate') {
-      return {
-        ...col,
-        render: (text: any, record: any, idx: number) => (
-          <Input
-            style={{ width: 160 }}
-            value={(() => {
-              const v = text || '';
-              if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(v.trim())) {
-                return col.dataIndex === 'EndDate' ? v.trim() + ' 23:59:59' : v.trim() + ' 00:00:00';
-              }
-              if (/^\d{1,2}\/\d{1,2}\/\d{4} \d{1,2}:\d{2}$/.test(v.trim())) {
-                return v.trim() + ':00';
-              }
-              return v;
-            })()}
-            onChange={e => {
-              const newData = [...editData];
-              newData[idx][col.dataIndex] = e.target.value;
-              setEditData(newData);
-            }}
-            placeholder={col.dataIndex === 'EndDate' ? 'M/D/YYYY HH:mm:ss' : 'M/D/YYYY HH:mm:ss'}
-          />
-        ),
-        sorter: getSorter(col.dataIndex),
-      } as any;
-    }
-    return {
-      ...col,
-      render: (text: any, record: any, idx: number) => (
-        <Input
-          style={col.dataIndex === 'Name' ? { width: 200 } : undefined}
-          value={text || ''}
-          onChange={e => {
-            const newData = [...editData];
-            newData[idx][col.dataIndex] = e.target.value;
-            setEditData(newData);
-          }}
-        />
-      ),
-      sorter: getSorter(col.dataIndex),
-    } as any;
-  });
-
-  // review页只展示entitytype=Line的数据
-  const reviewLineOnly = (arr: any[]) => (arr || []).filter(row => row.entitytype === 'Line');
-
-  useEffect(() => {
-    const updateHeight = () => setTableHeight(window.innerHeight - 320); // 320为header/steps等高度
-    updateHeight();
-    window.addEventListener('resize', updateHeight);
-    return () => window.removeEventListener('resize', updateHeight);
-  }, []);
-
-  // Select Data页表格columns只用16列
-  const selectDataFields = [
-    'entitytype', 'Id', 'customerId', 'MediaPlanId', 'PRODUCTID',
-    'Name', 'Description', 'StartDate', 'EndDate', 'Cpm', 'Cpd',
-    'TargetImpressions', 'TargetSpend', 'IsReserved', 'LineType', 'BudgetScheduleType'
+  // 2. 新CSV字段顺序
+  const allFields = [
+    "EntityType","Id","Name","Description","StartDate","EndDate","TargetSpend","CustomerId","CustomerName","MediaPlanId","MediaPlanName","CurrencyCode","Contact","OpportunityId","MediaPlanStatus","LineId","LineName","LineType","LineStatus","Cpm","Cpd","TargetImpressions","IsReserved","BudgetScheduleType","Targets","PublisherId","PublisherName","ProductId","ProductName","ProductType"
   ];
+  // 3. 全局隐藏字段
+  const hiddenFields = ["LineId", "LineName", "LineStatus", "Targets"];
+  // 4. 全局显示字段
+  const displayFields = allFields.filter(f => !hiddenFields.includes(f));
+  // 5. 统一columns定义（顺序与allFields一致）
+  const columns = allFields.map(field => ({
+    title: field,
+    dataIndex: field,
+    key: field,
+    width: 120,
+    ellipsis: true,
+  }));
 
-  // 过滤逻辑
-  const filteredData = data.filter(row => {
-    if (idFilter.length > 0 && !idFilter.includes(String(row.Id))) return false;
-    if (nameFilter && !(row.Name || '').toLowerCase().includes(nameFilter.toLowerCase())) return false;
-    if (descFilter && !(row.Description || '').toLowerCase().includes(descFilter.toLowerCase())) return false;
-    if (dateRange) {
-      const s = row.StartDate ? dayjs(row.StartDate) : null;
-      const e = row.EndDate ? dayjs(row.EndDate) : null;
-      if (dateRange[0] && (!s || s.isBefore(dayjs(dateRange[0]), 'day'))) return false;
-      if (dateRange[1] && (!e || e.isAfter(dayjs(dateRange[1]), 'day'))) return false;
+  // 定义不同操作模式下的只读字段
+  const getReadOnlyFields = (action: string | null) => {
+    const commonReadOnlyFields = [
+      "EntityType", "Id", "CustomerId", "CustomerName", "MediaPlanId", 
+      "OpportunityId", "MediaPlanStatus", "PublisherId", "PublisherName", 
+      "ProductId", "ProductName", "ProductType"
+    ];
+    
+    switch (action) {
+      case 'clone':
+        return commonReadOnlyFields;
+      case 'copy':
+        return [...commonReadOnlyFields, "MediaPlanName"];
+      case 'edit':
+        return commonReadOnlyFields;
+      default:
+        return [];
     }
-    return true;
-  });
+  };
 
-  // Id下拉选项
-  const idOptions = Array.from(new Set(data.map(row => String(row.Id))))
-    .filter(id => id.includes(idInput))
-    .map(id => ({ value: id }));
-
-  const selectDataColumns = columns.filter(col => selectDataFields.includes(col.dataIndex)).map(col => {
+  // 6. selectDataColumns 只显示 displayFields
+  const selectDataColumns = columns.filter(col => displayFields.includes(col.dataIndex)).map(col => {
     if (col.dataIndex === 'Id') {
       return {
         ...col,
@@ -401,6 +228,448 @@ const App: React.FC = () => {
     } as any;
   });
 
+  // 定义clonePageColumns
+  const clonePageColumns = columns.filter(col => displayFields.includes(col.dataIndex)).map(col => {
+    const readOnlyFields = getReadOnlyFields(selectedAction);
+    return {
+      ...col,
+      sorter: getSorter(col.dataIndex),
+      editable: !readOnlyFields.includes(col.dataIndex),
+      onCell: (record: any) => ({
+        record,
+        editable: !readOnlyFields.includes(col.dataIndex),
+        dataIndex: col.dataIndex,
+      }),
+    } as any;
+  });
+
+  // 添加数据验证函数
+  const validateData = (data: any[]) => {
+    const errors: string[] = [];
+    
+    data.forEach((row, index) => {
+      // 验证必填字段
+      const requiredFields = ['Name', 'StartDate', 'EndDate', 'TargetSpend'];
+      requiredFields.forEach(field => {
+        if (!row[field]) {
+          errors.push(`Row ${index + 1}: ${field} is required`);
+        }
+      });
+
+      // 验证日期格式和逻辑
+      if (row.StartDate && row.EndDate) {
+        const startDate = dayjs(row.StartDate);
+        const endDate = dayjs(row.EndDate);
+        if (!startDate.isValid() || !endDate.isValid()) {
+          errors.push(`Row ${index + 1}: Invalid date format`);
+        } else if (startDate.isAfter(endDate)) {
+          errors.push(`Row ${index + 1}: StartDate cannot be after EndDate`);
+        }
+      }
+
+      // 验证数字字段
+      const numericFields = ['TargetSpend', 'Cpm', 'Cpd', 'TargetImpressions'];
+      numericFields.forEach(field => {
+        if (row[field] && isNaN(Number(row[field]))) {
+          errors.push(`Row ${index + 1}: ${field} must be a number`);
+        }
+      });
+
+      // 验证布尔字段
+      if (row.IsReserved && !['TRUE', 'FALSE'].includes(row.IsReserved.toUpperCase())) {
+        errors.push(`Row ${index + 1}: IsReserved must be TRUE or FALSE`);
+      }
+    });
+
+    return errors;
+  };
+
+  // 添加导出验证函数
+  const validateExportData = (data: any[]) => {
+    const errors: string[] = [];
+    
+    // 验证数据完整性
+    if (!data || data.length === 0) {
+      errors.push('No data to export');
+      return errors;
+    }
+
+    // 验证字段完整性
+    const requiredFields = [
+      "EntityType", "Id", "Name", "Description", "StartDate", "EndDate", 
+      "TargetSpend", "CustomerId", "CustomerName", "MediaPlanId", 
+      "MediaPlanName", "CurrencyCode", "Contact", "OpportunityId", 
+      "MediaPlanStatus", "LineId", "LineName", "LineType", "LineStatus", 
+      "Cpm", "Cpd", "TargetImpressions", "IsReserved", "BudgetScheduleType", 
+      "Targets", "PublisherId", "PublisherName", "ProductId", "ProductName", 
+      "ProductType"
+    ];
+
+    data.forEach((row, index) => {
+      requiredFields.forEach(field => {
+        if (!(field in row)) {
+          errors.push(`Row ${index + 1}: Missing required field "${field}"`);
+        }
+      });
+    });
+
+    return errors;
+  };
+
+  // 修改处理函数以包含进度提示
+  const handleProcess = async (action: string) => {
+    setProcessing(true);
+    setProcessingProgress(0);
+    try {
+      let submitData;
+      let endpoint;
+
+      switch (action) {
+        case 'copy':
+          submitData = editData.map(row => ({ 
+            ...row, 
+            Id: row.originalId, 
+            MediaPlanId: targetMediaPlanId,
+            OpportunityId: targetOpportunityId 
+          }));
+          endpoint = '/process_copy';
+          break;
+        case 'edit':
+          submitData = editData.map(row => ({ ...row, Id: row.originalId }));
+          endpoint = '/process_edit';
+          break;
+        case 'clone':
+          submitData = editData.map(row => ({ ...row, Id: row.originalId }));
+          endpoint = '/process_clone';
+          break;
+        default:
+          throw new Error('Invalid action');
+      }
+
+      // 验证数据
+      const errors = validateData(submitData);
+      if (errors.length > 0) {
+        message.error(
+          <div>
+            <p>Please fix the following errors:</p>
+            <ul>
+              {errors.map((error, index) => (
+                <li key={index}>{error}</li>
+              ))}
+            </ul>
+          </div>
+        );
+        return;
+      }
+
+      // 模拟进度更新
+      const progressInterval = setInterval(() => {
+        setProcessingProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return prev;
+          }
+          return prev + 10;
+        });
+      }, 500);
+
+      const res = await axios.post(endpoint, action === 'copy' ? { lines: submitData, targetMediaPlanId, targetOpportunityId } : submitData);
+      
+      clearInterval(progressInterval);
+      setProcessingProgress(100);
+
+      if (res.data && res.data.success) {
+        // 验证导出数据
+        const exportErrors = validateExportData(res.data.review_data || []);
+        if (exportErrors.length > 0) {
+          message.error(
+            <div>
+              <p>Export data validation failed:</p>
+              <ul>
+                {exportErrors.map((error, index) => (
+                  <li key={index}>{error}</li>
+                ))}
+              </ul>
+            </div>
+          );
+          return;
+        }
+
+        setReviewData(res.data.review_data || []);
+        setDownloadReady(true);
+        setCurrentStep(4);
+      } else {
+        message.error(res.data.error || 'Processing failed');
+      }
+    } catch (e) {
+      message.error('Processing failed: ' + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setProcessing(false);
+      setProcessingProgress(0);
+    }
+  };
+
+  // 修改表格单元格编辑组件以包含验证
+  const EditableCell: React.FC<{
+    value: any;
+    record: any;
+    dataIndex: string;
+    editable: boolean;
+    children: React.ReactNode;
+  }> = ({ value, record, dataIndex, editable, children, ...restProps }) => {
+    const [editing, setEditing] = useState(false);
+    const [inputValue, setInputValue] = useState(value);
+    const [error, setError] = useState<string | null>(null);
+
+    const validateField = (value: any, field: string) => {
+      if (!value && ['Name', 'StartDate', 'EndDate', 'TargetSpend'].includes(field)) {
+        return `${field} is required`;
+      }
+
+      if (['StartDate', 'EndDate'].includes(field)) {
+        const date = dayjs(value);
+        if (!date.isValid()) {
+          return `Invalid date format`;
+        }
+        if (field === 'StartDate' && record.EndDate && date.isAfter(dayjs(record.EndDate))) {
+          return `StartDate cannot be after EndDate`;
+        }
+        if (field === 'EndDate' && record.StartDate && date.isBefore(dayjs(record.StartDate))) {
+          return `EndDate cannot be before StartDate`;
+        }
+      }
+
+      if (['TargetSpend', 'Cpm', 'Cpd', 'TargetImpressions'].includes(field) && value && isNaN(Number(value))) {
+        return `${field} must be a number`;
+      }
+
+      if (field === 'IsReserved' && value && !['TRUE', 'FALSE'].includes(value.toUpperCase())) {
+        return `IsReserved must be TRUE or FALSE`;
+      }
+
+      return null;
+    };
+
+    const toggleEdit = () => {
+      setEditing(!editing);
+      setInputValue(value);
+      setError(null);
+    };
+
+    const save = async () => {
+      const error = validateField(inputValue, dataIndex);
+      if (error) {
+        setError(error);
+        return;
+      }
+
+      try {
+        const newData = [...editData];
+        const index = newData.findIndex(item => record.originalId === item.originalId);
+        if (index > -1) {
+          newData[index] = { ...newData[index], [dataIndex]: inputValue };
+          setEditData(newData);
+        }
+      } catch (errInfo) {
+        console.error('Save failed:', errInfo);
+      }
+      setEditing(false);
+      setError(null);
+    };
+
+    let childNode = children;
+
+    if (editable) {
+      childNode = editing ? (
+        <div>
+          <Input
+            value={inputValue}
+            onChange={e => {
+              setInputValue(e.target.value);
+              setError(validateField(e.target.value, dataIndex));
+            }}
+            onPressEnter={save}
+            onBlur={save}
+            autoFocus
+            status={error ? 'error' : undefined}
+          />
+          {error && <div style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>{error}</div>}
+        </div>
+      ) : (
+        <div className="editable-cell-value-wrap" style={{ paddingRight: 24 }} onClick={toggleEdit}>
+          {children}
+        </div>
+      );
+    }
+
+    return <td {...restProps}>{childNode}</td>;
+  };
+
+  // 修改处理按钮的点击事件
+  const handleNextClick = () => {
+    setConfirmModalVisible(true);
+  };
+
+  // 添加确认对话框
+  const ConfirmModal: React.FC = () => {
+    const getConfirmMessage = () => {
+      switch (selectedAction) {
+        case 'copy':
+          return `Are you sure you want to copy ${editData.length} line items to Media Plan ${targetMediaPlanId}?`;
+        case 'edit':
+          return `Are you sure you want to edit ${editData.length} line items? This will overwrite the original data.`;
+        case 'clone':
+          return `Are you sure you want to clone ${editData.length} line items?`;
+        default:
+          return 'Are you sure you want to proceed?';
+      }
+    };
+
+    return (
+      <Modal
+        title="Confirm Action"
+        open={confirmModalVisible}
+        onOk={() => {
+          setConfirmModalVisible(false);
+          handleProcess(selectedAction || '');
+        }}
+        onCancel={() => setConfirmModalVisible(false)}
+        okText="Yes, proceed"
+        cancelText="Cancel"
+      >
+        <p>{getConfirmMessage()}</p>
+        {selectedAction === 'edit' && (
+          <p style={{ color: 'red' }}>
+            Warning: This action cannot be undone. Please make sure you have reviewed all changes.
+          </p>
+        )}
+      </Modal>
+    );
+  };
+
+  // 定义表格组件
+  const components = {
+    body: {
+      cell: EditableCell,
+    },
+  };
+
+  const uploadProps: UploadProps = {
+    name: 'file',
+    multiple: false,
+    accept: '.csv',
+    fileList,
+    beforeUpload: (file) => {
+      setFileList([file]);
+      setUploadError(null);
+      return false;
+    },
+    onRemove: () => {
+      setFileList([]);
+      setUploadError(null);
+    },
+  };
+
+  const handleUpload = async () => {
+    if (fileList.length === 0) {
+      setUploadError('Please select a file first');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', fileList[0]);
+    try {
+      const response = await axios.post('/upload', formData);
+      if (response.data.error) {
+        setUploadError('You uploaded a file with incorrect format, please use another file.');
+        setTimeout(() => setFileList([]), 300);
+      } else {
+        setUploadError(null);
+        message.success('File uploaded successfully');
+        setCurrentStep(1);
+        // 获取数据
+        const dataResponse = await axios.get('/lines');
+        // 为每一行加originalId
+        const withOriginalId = (dataResponse.data.data || []).map((row: any) => ({ ...row, originalId: row.Id }));
+        setData(withOriginalId);
+      }
+    } catch (error) {
+      setUploadError('Upload failed, please try again.');
+      setTimeout(() => setFileList([]), 300);
+    }
+  };
+
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: (keys: React.Key[], rows: any[]) => {
+      // 合并已选 keys，去重
+      const mergedKeys = Array.from(new Set([...selectedRowKeys, ...keys]));
+      // 只保留当前 data 里存在的行
+      const allRows = [...selectedRows, ...rows];
+      const mergedRows = mergedKeys.map(key => allRows.find(row => row.originalId === key)).filter(Boolean);
+      setSelectedRowKeys(mergedKeys);
+      setSelectedRows(mergedRows);
+    },
+    // 当用户取消勾选时，移除对应 key
+    onSelect: (record: any, selected: boolean) => {
+      if (!selected) {
+        setSelectedRowKeys(selectedRowKeys.filter(key => key !== record.originalId));
+        setSelectedRows(selectedRows.filter(row => row.originalId !== record.originalId));
+      }
+    },
+    onSelectAll: (selected: boolean, selectedRowsAll: any[], changeRows: any[]) => {
+      if (selected) {
+        // 全选时合并所有 keys
+        const newKeys = changeRows.map(row => row.originalId);
+        const mergedKeys = Array.from(new Set([...selectedRowKeys, ...newKeys]));
+        const allRows = [...selectedRows, ...changeRows];
+        const mergedRows = mergedKeys.map(key => allRows.find(row => row.originalId === key)).filter(Boolean);
+        setSelectedRowKeys(mergedKeys);
+        setSelectedRows(mergedRows);
+      } else {
+        // 取消全选时移除当前页 keys
+        const removeKeys = changeRows.map(row => row.originalId);
+        setSelectedRowKeys(selectedRowKeys.filter(key => !removeKeys.includes(key)));
+        setSelectedRows(selectedRows.filter(row => !removeKeys.includes(row.originalId)));
+      }
+    }
+  };
+
+  // 进入第三步时初始化可编辑数据
+  useEffect(() => {
+    if (currentStep === 3 && selectedRows.length > 0) {
+      setEditData(selectedRows.map(row => ({ ...row, originalId: row.originalId })));
+    }
+  }, [currentStep, selectedRows]);
+
+  // review页只展示entitytype=Line的数据
+  const reviewLineOnly = (arr: any[]) => (arr || []).filter(row => row.entitytype === 'Line');
+
+  useEffect(() => {
+    const updateHeight = () => setTableHeight(window.innerHeight - 320); // 320为header/steps等高度
+    updateHeight();
+    window.addEventListener('resize', updateHeight);
+    return () => window.removeEventListener('resize', updateHeight);
+  }, []);
+
+  // 过滤逻辑
+  const filteredData = data.filter(row => {
+    if (idFilter.length > 0 && !idFilter.includes(String(row.Id))) return false;
+    if (nameFilter && !(row.Name || '').toLowerCase().includes(nameFilter.toLowerCase())) return false;
+    if (descFilter && !(row.Description || '').toLowerCase().includes(descFilter.toLowerCase())) return false;
+    if (dateRange) {
+      const s = row.StartDate ? dayjs(row.StartDate) : null;
+      const e = row.EndDate ? dayjs(row.EndDate) : null;
+      if (dateRange[0] && (!s || s.isBefore(dayjs(dateRange[0]), 'day'))) return false;
+      if (dateRange[1] && (!e || e.isAfter(dayjs(dateRange[1]), 'day'))) return false;
+    }
+    return true;
+  });
+
+  // Id下拉选项
+  const idOptions = Array.from(new Set(data.map(row => String(row.Id))))
+    .filter(id => id.includes(idInput))
+    .map(id => ({ value: id }));
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Header style={{ background: '#fff', padding: 0, height: 80, display: 'flex', alignItems: 'center' }}>
@@ -420,6 +689,7 @@ const App: React.FC = () => {
             setDownloadReady(false);
             setReviewData([]);
             setTargetMediaPlanId(null);
+            setTargetOpportunityId(null);
             setShowCopyModal(false);
             setDownloaded(false);
             setUploadError(null);
@@ -553,12 +823,21 @@ const App: React.FC = () => {
             <div style={{ color: '#faad14', fontWeight: 500, marginBottom: 16, fontSize: 16 }}>
               You're only allowed to edit specific parameters of the line items.
             </div>
+            {processing && (
+              <div style={{ marginBottom: 16 }}>
+                <Progress percent={processingProgress} status="active" />
+              </div>
+            )}
             {selectedAction === 'copy' ? (
               <div>
                 <h2>Please edit the lines you want to copy</h2>
                 <Table
                   columns={clonePageColumns}
-                  dataSource={editData.map(row => ({ ...row, MediaPlanId: targetMediaPlanId }))}
+                  dataSource={editData.map(row => ({ 
+                    ...row, 
+                    MediaPlanId: targetMediaPlanId,
+                    OpportunityId: targetOpportunityId
+                  }))}
                   pagination={{
                     pageSize,
                     pageSizeOptions: ['10', '20', '50', '100'],
@@ -567,30 +846,14 @@ const App: React.FC = () => {
                   }}
                   rowKey="originalId"
                   scroll={{ x: true }}
+                  components={components}
                 />
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
                   <Button onClick={() => setCurrentStep(2)}>Back</Button>
                   <Button
                     type="primary"
                     loading={processing}
-                    onClick={async () => {
-                      setProcessing(true);
-                      try {
-                        const submitData = editData.map(row => ({ ...row, Id: row.originalId, MediaPlanId: targetMediaPlanId }));
-                        const res = await axios.post('/process_copy', { lines: submitData, targetMediaPlanId });
-                        if (res.data && res.data.success) {
-                          setReviewData(res.data.review_data || []);
-                          setDownloadReady(true);
-                          setCurrentStep(4);
-                        } else {
-                          message.error(res.data.error || 'Processing failed');
-                        }
-                      } catch (e) {
-                        message.error('Processing failed');
-                      } finally {
-                        setProcessing(false);
-                      }
-                    }}
+                    onClick={handleNextClick}
                   >
                     Next
                   </Button>
@@ -610,30 +873,14 @@ const App: React.FC = () => {
                   }}
                   rowKey="originalId"
                   scroll={{ x: true }}
+                  components={components}
                 />
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
                   <Button onClick={() => setCurrentStep(2)}>Back</Button>
                   <Button
                     type="primary"
                     loading={processing}
-                    onClick={async () => {
-                      setProcessing(true);
-                      try {
-                        const submitData = editData.map(row => ({ ...row, Id: row.originalId }));
-                        const res = await axios.post('/process_edit', submitData);
-                        if (res.data && res.data.success) {
-                          setReviewData(res.data.review_data || []);
-                          setDownloadReady(true);
-                          setCurrentStep(4);
-                        } else {
-                          message.error(res.data.error || 'Processing failed');
-                        }
-                      } catch (e) {
-                        message.error('Processing failed');
-                      } finally {
-                        setProcessing(false);
-                      }
-                    }}
+                    onClick={handleNextClick}
                   >
                     Next
                   </Button>
@@ -653,30 +900,14 @@ const App: React.FC = () => {
                   }}
                   rowKey="originalId"
                   scroll={{ x: true }}
+                  components={components}
                 />
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
                   <Button onClick={() => setCurrentStep(2)}>Back</Button>
                   <Button
                     type="primary"
                     loading={processing}
-                    onClick={async () => {
-                      setProcessing(true);
-                      try {
-                        const submitData = editData.map(row => ({ ...row, Id: row.originalId }));
-                        const res = await axios.post('/process_clone', submitData);
-                        if (res.data && res.data.success) {
-                          setReviewData(res.data.review_data || []);
-                          setDownloadReady(true);
-                          setCurrentStep(4);
-                        } else {
-                          message.error(res.data.error || 'Processing failed');
-                        }
-                      } catch (e) {
-                        message.error('Processing failed');
-                      } finally {
-                        setProcessing(false);
-                      }
-                    }}
+                    onClick={handleNextClick}
                   >
                     Next
                   </Button>
@@ -739,17 +970,37 @@ const App: React.FC = () => {
         )}
 
         <Modal
-          title="Enter target Media Plan Id"
+          title="Enter target Media Plan Id and Opportunity Id"
           open={showCopyModal}
-          onOk={() => { setShowCopyModal(false); setCurrentStep(3); }}
+          onOk={() => { 
+            if (targetMediaPlanId && targetOpportunityId) {
+              setShowCopyModal(false); 
+              setCurrentStep(3);
+            } else {
+              message.error('Please enter both Media Plan Id and Opportunity Id');
+            }
+          }}
           onCancel={() => setShowCopyModal(false)}
-          okButtonProps={{ disabled: !targetMediaPlanId }}
+          okButtonProps={{ disabled: !targetMediaPlanId || !targetOpportunityId }}
         >
-          <Input
-            placeholder="Target Media Plan Id"
-            value={targetMediaPlanId || ''}
-            onChange={e => setTargetMediaPlanId(e.target.value)}
-          />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <div style={{ marginBottom: 8 }}>Target Media Plan Id:</div>
+              <Input
+                placeholder="Target Media Plan Id"
+                value={targetMediaPlanId || ''}
+                onChange={e => setTargetMediaPlanId(e.target.value)}
+              />
+            </div>
+            <div>
+              <div style={{ marginBottom: 8 }}>Target Opportunity Id:</div>
+              <Input
+                placeholder="Target Opportunity Id"
+                value={targetOpportunityId || ''}
+                onChange={e => setTargetOpportunityId(e.target.value)}
+              />
+            </div>
+          </div>
         </Modal>
 
         <Modal
@@ -779,6 +1030,8 @@ const App: React.FC = () => {
             </div>
           </div>
         </Modal>
+
+        <ConfirmModal />
       </Content>
     </Layout>
   );
