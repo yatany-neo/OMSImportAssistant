@@ -81,16 +81,16 @@ const App: React.FC = () => {
   // 定义不同操作模式下的只读字段
   const getReadOnlyFields = (action: string | null) => {
     const commonReadOnlyFields = [
-      "EntityType", "Id", "CustomerId", "CustomerName", "MediaPlanId", 
-      "OpportunityId", "MediaPlanStatus", "PublisherId", "PublisherName", 
-      "ProductId", "ProductName", "ProductType"
+      "entitytype", "id", "customerid", "customername", "mediaplanid", 
+      "opportunityid", "mediaplanstatus", "publisherid", "publishername", 
+      "productid", "productname", "producttype"
     ];
     
     switch (action) {
       case 'clone':
         return commonReadOnlyFields;
       case 'copy':
-        return [...commonReadOnlyFields, "MediaPlanName"];
+        return [...commonReadOnlyFields, "mediaplanname"];
       case 'edit':
         return commonReadOnlyFields;
       default:
@@ -238,14 +238,14 @@ const App: React.FC = () => {
     body: {
       cell: (props: any) => {
         const { dataIndex, record, children, ...restProps } = props;
-        const editable = !getReadOnlyFields(selectedAction).includes(dataIndex);
+        const editable = !getReadOnlyFields(selectedAction).includes(dataIndex.toLowerCase());
         
         if (!editable) {
           return <td {...restProps}>{children}</td>;
         }
 
         let input;
-        if (dataIndex === 'IsReserved') {
+        if (dataIndex.toLowerCase() === 'isreserved') {
           input = (
             <Select
               defaultValue={record[dataIndex]}
@@ -932,7 +932,7 @@ const App: React.FC = () => {
                 onShowSizeChange: (current, size) => setPageSize(size),
               }}
               rowKey="originalId"
-              scroll={{ x: true }}
+              scroll={{ x: 'max-content' }}
             />
             <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
               <Button onClick={() => setCurrentStep(3)}>Back</Button>
