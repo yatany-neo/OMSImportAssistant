@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Steps, Upload, Table, Button, message, Modal, Input, DatePicker, AutoComplete, Progress } from 'antd';
+import { Layout, Steps, Upload, Table, Button, message, Modal, Input, DatePicker, AutoComplete, Progress, Select } from 'antd';
 import { InboxOutlined, HomeOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
 import type { FilterDropdownProps } from 'antd/es/table/interface';
@@ -234,21 +234,188 @@ const App: React.FC = () => {
   });
 
   // 定义clonePageColumns
-  const clonePageColumns = columns.filter(col => displayFields.includes(col.dataIndex)).map(col => {
-    const readOnlyFields = getReadOnlyFields(selectedAction);
-    const isEditable = !readOnlyFields.includes(col.dataIndex);
-    return {
-      ...col,
+  const clonePageColumns = [
+    {
+      title: 'EntityType',
+      dataIndex: 'EntityType',
+      key: 'EntityType',
       width: 120,
-      sorter: getSorter(col.dataIndex),
-      editable: isEditable,
-      onCell: (record: any) => ({
-        record,
-        editable: isEditable,
-        dataIndex: col.dataIndex,
-      }),
-    } as any;
-  });
+    },
+    {
+      title: 'Id',
+      dataIndex: 'Id',
+      key: 'Id',
+      width: 120,
+    },
+    {
+      title: 'Name',
+      dataIndex: 'Name',
+      key: 'Name',
+      width: 200,
+    },
+    {
+      title: 'Description',
+      dataIndex: 'Description',
+      key: 'Description',
+      width: 200,
+    },
+    {
+      title: 'StartDate',
+      dataIndex: 'StartDate',
+      key: 'StartDate',
+      width: 180,
+    },
+    {
+      title: 'EndDate',
+      dataIndex: 'EndDate',
+      key: 'EndDate',
+      width: 180,
+    },
+    {
+      title: 'TargetSpend',
+      dataIndex: 'TargetSpend',
+      key: 'TargetSpend',
+      width: 120,
+    },
+    {
+      title: 'CustomerId',
+      dataIndex: 'CustomerId',
+      key: 'CustomerId',
+      width: 120,
+    },
+    {
+      title: 'CustomerName',
+      dataIndex: 'CustomerName',
+      key: 'CustomerName',
+      width: 150,
+    },
+    {
+      title: 'MediaPlanId',
+      dataIndex: 'MediaPlanId',
+      key: 'MediaPlanId',
+      width: 120,
+    },
+    {
+      title: 'MediaPlanName',
+      dataIndex: 'MediaPlanName',
+      key: 'MediaPlanName',
+      width: 150,
+    },
+    {
+      title: 'CurrencyCode',
+      dataIndex: 'CurrencyCode',
+      key: 'CurrencyCode',
+      width: 120,
+    },
+    {
+      title: 'Contact',
+      dataIndex: 'Contact',
+      key: 'Contact',
+      width: 200,
+    },
+    {
+      title: 'OpportunityId',
+      dataIndex: 'OpportunityId',
+      key: 'OpportunityId',
+      width: 120,
+    },
+    {
+      title: 'MediaPlanStatus',
+      dataIndex: 'MediaPlanStatus',
+      key: 'MediaPlanStatus',
+      width: 150,
+    },
+    {
+      title: 'LineId',
+      dataIndex: 'LineId',
+      key: 'LineId',
+      width: 120,
+    },
+    {
+      title: 'LineName',
+      dataIndex: 'LineName',
+      key: 'LineName',
+      width: 150,
+    },
+    {
+      title: 'LineType',
+      dataIndex: 'LineType',
+      key: 'LineType',
+      width: 120,
+    },
+    {
+      title: 'LineStatus',
+      dataIndex: 'LineStatus',
+      key: 'LineStatus',
+      width: 120,
+    },
+    {
+      title: 'Cpm',
+      dataIndex: 'Cpm',
+      key: 'Cpm',
+      width: 100,
+    },
+    {
+      title: 'Cpd',
+      dataIndex: 'Cpd',
+      key: 'Cpd',
+      width: 100,
+    },
+    {
+      title: 'TargetImpressions',
+      dataIndex: 'TargetImpressions',
+      key: 'TargetImpressions',
+      width: 150,
+    },
+    {
+      title: 'IsReserved',
+      dataIndex: 'IsReserved',
+      key: 'IsReserved',
+      width: 100,
+    },
+    {
+      title: 'BudgetScheduleType',
+      dataIndex: 'BudgetScheduleType',
+      key: 'BudgetScheduleType',
+      width: 150,
+    },
+    {
+      title: 'Targets',
+      dataIndex: 'Targets',
+      key: 'Targets',
+      width: 200,
+    },
+    {
+      title: 'PublisherId',
+      dataIndex: 'PublisherId',
+      key: 'PublisherId',
+      width: 120,
+    },
+    {
+      title: 'PublisherName',
+      dataIndex: 'PublisherName',
+      key: 'PublisherName',
+      width: 150,
+    },
+    {
+      title: 'ProductId',
+      dataIndex: 'ProductId',
+      key: 'ProductId',
+      width: 120,
+    },
+    {
+      title: 'ProductName',
+      dataIndex: 'ProductName',
+      key: 'ProductName',
+      width: 150,
+    },
+    {
+      title: 'ProductType',
+      dataIndex: 'ProductType',
+      key: 'ProductType',
+      width: 120,
+    }
+  ];
 
   // 添加数据验证函数
   const validateData = (data: any[]) => {
@@ -416,159 +583,54 @@ const App: React.FC = () => {
     }
   };
 
-  // 修改表格单元格编辑组件
-  const EditableCell: React.FC<{
-    value: any;
-    record: any;
-    dataIndex: string;
-    editable: boolean;
-    children: React.ReactNode;
-  }> = ({ value, record, dataIndex, editable, children, ...restProps }) => {
-    const [editing, setEditing] = useState(false);
-    const [inputValue, setInputValue] = useState(value);
-    const [error, setError] = useState<string | null>(null);
-
-    const validateField = (value: any, field: string) => {
-      if (!value && ['Name', 'StartDate', 'EndDate', 'TargetSpend'].includes(field)) {
-        return `${field} is required`;
-      }
-
-      if (['StartDate', 'EndDate'].includes(field)) {
-        const date = dayjs(value);
-        if (!date.isValid()) {
-          return `Invalid date format`;
-        }
-        if (field === 'StartDate' && record.EndDate && date.isAfter(dayjs(record.EndDate))) {
-          return `StartDate cannot be after EndDate`;
-        }
-        if (field === 'EndDate' && record.StartDate && date.isBefore(dayjs(record.StartDate))) {
-          return `EndDate cannot be before StartDate`;
-        }
-      }
-
-      if (['TargetSpend', 'Cpm', 'Cpd', 'TargetImpressions'].includes(field) && value && isNaN(Number(value))) {
-        return `${field} must be a number`;
-      }
-
-      if (field === 'IsReserved' && value && !['TRUE', 'FALSE'].includes(value.toUpperCase())) {
-        return `IsReserved must be TRUE or FALSE`;
-      }
-
-      return null;
-    };
-
-    const toggleEdit = () => {
-      if (!editable) return;
-      setEditing(!editing);
-      setInputValue(value);
-      setError(null);
-    };
-
-    const save = async () => {
-      if (!editable) return;
-      
-      const error = validateField(inputValue, dataIndex);
-      if (error) {
-        setError(error);
-        return;
-      }
-
-      try {
-        const newData = [...editData];
-        const index = newData.findIndex(item => record.originalId === item.originalId);
-        if (index > -1) {
-          newData[index] = { ...newData[index], [dataIndex]: inputValue };
-          setEditData(newData);
-        }
-      } catch (errInfo) {
-        console.error('Save failed:', errInfo);
-      }
-      setEditing(false);
-      setError(null);
-    };
-
-    let childNode = children;
-
-    if (editable) {
-      childNode = editing ? (
-        <div>
-          <Input
-            value={inputValue}
-            onChange={e => {
-              setInputValue(e.target.value);
-              setError(validateField(e.target.value, dataIndex));
-            }}
-            onPressEnter={save}
-            onBlur={save}
-            autoFocus
-            status={error ? 'error' : undefined}
-          />
-          {error && <div style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>{error}</div>}
-        </div>
-      ) : (
-        <div 
-          className="editable-cell-value-wrap" 
-          style={{ 
-            paddingRight: 24,
-            cursor: 'pointer',
-            color: '#1890ff'
-          }} 
-          onClick={toggleEdit}
-        >
-          {children}
-        </div>
-      );
-    }
-
-    return <td {...restProps}>{childNode}</td>;
-  };
-
-  // 修改处理按钮的点击事件
-  const handleNextClick = () => {
-    setConfirmModalVisible(true);
-  };
-
-  // 添加确认对话框
-  const ConfirmModal: React.FC = () => {
-    const getConfirmMessage = () => {
-      switch (selectedAction) {
-        case 'copy':
-          return `Are you sure you want to copy ${editData.length} line items to Media Plan ${targetMediaPlanId}?`;
-        case 'edit':
-          return `Are you sure you want to edit ${editData.length} line items? This will overwrite the original data.`;
-        case 'clone':
-          return `Are you sure you want to clone ${editData.length} line items?`;
-        default:
-          return 'Are you sure you want to proceed?';
-      }
-    };
-
-    return (
-      <Modal
-        title="Confirm Action"
-        open={confirmModalVisible}
-        onOk={() => {
-          setConfirmModalVisible(false);
-          handleProcess(selectedAction || '');
-        }}
-        onCancel={() => setConfirmModalVisible(false)}
-        okText="Yes, proceed"
-        cancelText="Cancel"
-      >
-        <p>{getConfirmMessage()}</p>
-        {selectedAction === 'edit' && (
-          <p style={{ color: 'red' }}>
-            Warning: This action cannot be undone. Please make sure you have reviewed all changes.
-          </p>
-        )}
-      </Modal>
-    );
-  };
-
-  // 定义表格组件
+  // 修改表格组件配置
   const components = {
     body: {
-      cell: EditableCell,
+      cell: (props: any) => {
+        const { dataIndex, record, children, ...restProps } = props;
+        const editable = !getReadOnlyFields(selectedAction).includes(dataIndex);
+        
+        if (!editable) {
+          return <td {...restProps}>{children}</td>;
+        }
+
+        let input;
+        if (dataIndex === 'IsReserved') {
+          input = (
+            <Select
+              defaultValue={record[dataIndex]}
+              style={{ width: '100%' }}
+              onChange={(value) => {
+                const newData = [...editData];
+                const index = newData.findIndex(item => item.originalId === record.originalId);
+                if (index > -1) {
+                  newData[index] = { ...newData[index], [dataIndex]: value };
+                  setEditData(newData);
+                }
+              }}
+            >
+              <Select.Option value="TRUE">TRUE</Select.Option>
+              <Select.Option value="FALSE">FALSE</Select.Option>
+            </Select>
+          );
+        } else {
+          input = (
+            <Input
+              defaultValue={record[dataIndex]}
+              onChange={(e) => {
+                const newData = [...editData];
+                const index = newData.findIndex(item => item.originalId === record.originalId);
+                if (index > -1) {
+                  newData[index] = { ...newData[index], [dataIndex]: e.target.value };
+                  setEditData(newData);
+                }
+              }}
+            />
+          );
+        }
+
+        return <td {...restProps}>{input}</td>;
+      },
     },
   };
 
@@ -690,6 +752,48 @@ const App: React.FC = () => {
 
   const handleDownloadTemplate = () => {
     window.open('https://omsimportassistant-hrhpdxdrbvc3eha9.eastus2-01.azurewebsites.net/download_template', '_blank');
+  };
+
+  // 修改处理按钮的点击事件
+  const handleNextClick = () => {
+    setConfirmModalVisible(true);
+  };
+
+  // 添加确认对话框
+  const ConfirmModal = () => {
+    const getConfirmMessage = () => {
+      switch (selectedAction) {
+        case 'copy':
+          return `Are you sure you want to copy ${editData.length} line items to Media Plan ${targetMediaPlanId}?`;
+        case 'edit':
+          return `Are you sure you want to edit ${editData.length} line items? This will overwrite the original data.`;
+        case 'clone':
+          return `Are you sure you want to clone ${editData.length} line items?`;
+        default:
+          return 'Are you sure you want to proceed?';
+      }
+    };
+
+    return (
+      <Modal
+        title="Confirm Action"
+        open={confirmModalVisible}
+        onOk={() => {
+          setConfirmModalVisible(false);
+          handleProcess(selectedAction || '');
+        }}
+        onCancel={() => setConfirmModalVisible(false)}
+        okText="Yes, proceed"
+        cancelText="Cancel"
+      >
+        <p>{getConfirmMessage()}</p>
+        {selectedAction === 'edit' && (
+          <p style={{ color: 'red' }}>
+            Warning: This action cannot be undone. Please make sure you have reviewed all changes.
+          </p>
+        )}
+      </Modal>
+    );
   };
 
   return (
