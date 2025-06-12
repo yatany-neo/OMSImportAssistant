@@ -185,9 +185,53 @@ const App: React.FC = () => {
 
   // 只用于显示的columns
   const clonePageColumns = columns.filter(col => clonePageFields.includes(col.dataIndex)).map(col => {
+    if (readOnlyFields.includes(col.dataIndex)) {
+      return {
+        ...col,
+        render: (text: any) => <span>{text}</span>,
+        sorter: getSorter(col.dataIndex),
+      } as any;
+    }
+    if (col.dataIndex === 'StartDate' || col.dataIndex === 'EndDate') {
+      return {
+        ...col,
+        render: (text: any, record: any, idx: number) => (
+          <Input
+            style={{ width: 160 }}
+            value={(() => {
+              const v = text || '';
+              if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(v.trim())) {
+                return col.dataIndex === 'EndDate' ? v.trim() + ' 23:59:59' : v.trim() + ' 00:00:00';
+              }
+              if (/^\d{1,2}\/\d{1,2}\/\d{4} \d{1,2}:\d{2}$/.test(v.trim())) {
+                return v.trim() + ':00';
+              }
+              return v;
+            })()}
+            onChange={e => {
+              const newData = [...editData];
+              newData[idx][col.dataIndex] = e.target.value;
+              setEditData(newData);
+            }}
+            placeholder={col.dataIndex === 'EndDate' ? 'M/D/YYYY HH:mm:ss' : 'M/D/YYYY HH:mm:ss'}
+          />
+        ),
+        sorter: getSorter(col.dataIndex),
+      } as any;
+    }
     return {
       ...col,
-      ...(readOnlyFields.includes(col.dataIndex) ? { render: (text: any) => <span>{text}</span> } : {}),
+      render: (text: any, record: any, idx: number) => (
+        <Input
+          style={col.dataIndex === 'Name' ? { width: 200 } : undefined}
+          value={text || ''}
+          onChange={e => {
+            const newData = [...editData];
+            newData[idx][col.dataIndex] = e.target.value;
+            setEditData(newData);
+          }}
+        />
+      ),
       sorter: getSorter(col.dataIndex),
     } as any;
   });
