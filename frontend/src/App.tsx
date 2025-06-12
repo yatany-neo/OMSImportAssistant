@@ -233,188 +233,115 @@ const App: React.FC = () => {
     } as any;
   });
 
-  // 定义clonePageColumns
+  // 修改表格组件配置
+  const components = {
+    body: {
+      cell: (props: any) => {
+        const { dataIndex, record, children, ...restProps } = props;
+        const editable = !getReadOnlyFields(selectedAction).includes(dataIndex);
+        
+        if (!editable) {
+          return <td {...restProps}>{children}</td>;
+        }
+
+        let input;
+        if (dataIndex === 'IsReserved') {
+          input = (
+            <Select
+              defaultValue={record[dataIndex]}
+              style={{ width: '100%' }}
+              onChange={(value) => {
+                const newData = [...editData];
+                const index = newData.findIndex(item => item.originalId === record.originalId);
+                if (index > -1) {
+                  newData[index] = { ...newData[index], [dataIndex]: value };
+                  setEditData(newData);
+                }
+              }}
+            >
+              <Select.Option value="TRUE">TRUE</Select.Option>
+              <Select.Option value="FALSE">FALSE</Select.Option>
+            </Select>
+          );
+        } else {
+          input = (
+            <Input
+              defaultValue={record[dataIndex]}
+              onChange={(e) => {
+                const newData = [...editData];
+                const index = newData.findIndex(item => item.originalId === record.originalId);
+                if (index > -1) {
+                  newData[index] = { ...newData[index], [dataIndex]: e.target.value };
+                  setEditData(newData);
+                }
+              }}
+            />
+          );
+        }
+
+        return <td {...restProps}>{input}</td>;
+      },
+    },
+  };
+
+  // 修改 clonePageColumns 的定义
   const clonePageColumns = [
-    {
-      title: 'EntityType',
-      dataIndex: 'EntityType',
-      key: 'EntityType',
-      width: 120,
-    },
-    {
-      title: 'Id',
-      dataIndex: 'Id',
-      key: 'Id',
-      width: 120,
-    },
     {
       title: 'Name',
       dataIndex: 'Name',
       key: 'Name',
       width: 200,
+      editable: !getReadOnlyFields(selectedAction).includes('Name'),
     },
     {
       title: 'Description',
       dataIndex: 'Description',
       key: 'Description',
       width: 200,
+      editable: !getReadOnlyFields(selectedAction).includes('Description'),
     },
     {
       title: 'StartDate',
       dataIndex: 'StartDate',
       key: 'StartDate',
-      width: 180,
+      width: 120,
+      editable: !getReadOnlyFields(selectedAction).includes('StartDate'),
     },
     {
       title: 'EndDate',
       dataIndex: 'EndDate',
       key: 'EndDate',
-      width: 180,
+      width: 120,
+      editable: !getReadOnlyFields(selectedAction).includes('EndDate'),
     },
     {
       title: 'TargetSpend',
       dataIndex: 'TargetSpend',
       key: 'TargetSpend',
       width: 120,
+      editable: !getReadOnlyFields(selectedAction).includes('TargetSpend'),
     },
     {
-      title: 'CustomerId',
-      dataIndex: 'CustomerId',
-      key: 'CustomerId',
+      title: 'IsReserved',
+      dataIndex: 'IsReserved',
+      key: 'IsReserved',
       width: 120,
-    },
-    {
-      title: 'CustomerName',
-      dataIndex: 'CustomerName',
-      key: 'CustomerName',
-      width: 150,
+      editable: !getReadOnlyFields(selectedAction).includes('IsReserved'),
     },
     {
       title: 'MediaPlanId',
       dataIndex: 'MediaPlanId',
       key: 'MediaPlanId',
       width: 120,
-    },
-    {
-      title: 'MediaPlanName',
-      dataIndex: 'MediaPlanName',
-      key: 'MediaPlanName',
-      width: 150,
-    },
-    {
-      title: 'CurrencyCode',
-      dataIndex: 'CurrencyCode',
-      key: 'CurrencyCode',
-      width: 120,
-    },
-    {
-      title: 'Contact',
-      dataIndex: 'Contact',
-      key: 'Contact',
-      width: 200,
+      editable: !getReadOnlyFields(selectedAction).includes('MediaPlanId'),
     },
     {
       title: 'OpportunityId',
       dataIndex: 'OpportunityId',
       key: 'OpportunityId',
       width: 120,
+      editable: !getReadOnlyFields(selectedAction).includes('OpportunityId'),
     },
-    {
-      title: 'MediaPlanStatus',
-      dataIndex: 'MediaPlanStatus',
-      key: 'MediaPlanStatus',
-      width: 150,
-    },
-    {
-      title: 'LineId',
-      dataIndex: 'LineId',
-      key: 'LineId',
-      width: 120,
-    },
-    {
-      title: 'LineName',
-      dataIndex: 'LineName',
-      key: 'LineName',
-      width: 150,
-    },
-    {
-      title: 'LineType',
-      dataIndex: 'LineType',
-      key: 'LineType',
-      width: 120,
-    },
-    {
-      title: 'LineStatus',
-      dataIndex: 'LineStatus',
-      key: 'LineStatus',
-      width: 120,
-    },
-    {
-      title: 'Cpm',
-      dataIndex: 'Cpm',
-      key: 'Cpm',
-      width: 100,
-    },
-    {
-      title: 'Cpd',
-      dataIndex: 'Cpd',
-      key: 'Cpd',
-      width: 100,
-    },
-    {
-      title: 'TargetImpressions',
-      dataIndex: 'TargetImpressions',
-      key: 'TargetImpressions',
-      width: 150,
-    },
-    {
-      title: 'IsReserved',
-      dataIndex: 'IsReserved',
-      key: 'IsReserved',
-      width: 100,
-    },
-    {
-      title: 'BudgetScheduleType',
-      dataIndex: 'BudgetScheduleType',
-      key: 'BudgetScheduleType',
-      width: 150,
-    },
-    {
-      title: 'Targets',
-      dataIndex: 'Targets',
-      key: 'Targets',
-      width: 200,
-    },
-    {
-      title: 'PublisherId',
-      dataIndex: 'PublisherId',
-      key: 'PublisherId',
-      width: 120,
-    },
-    {
-      title: 'PublisherName',
-      dataIndex: 'PublisherName',
-      key: 'PublisherName',
-      width: 150,
-    },
-    {
-      title: 'ProductId',
-      dataIndex: 'ProductId',
-      key: 'ProductId',
-      width: 120,
-    },
-    {
-      title: 'ProductName',
-      dataIndex: 'ProductName',
-      key: 'ProductName',
-      width: 150,
-    },
-    {
-      title: 'ProductType',
-      dataIndex: 'ProductType',
-      key: 'ProductType',
-      width: 120,
-    }
   ];
 
   // 添加数据验证函数
@@ -581,57 +508,6 @@ const App: React.FC = () => {
       setProcessing(false);
       setProcessingProgress(0);
     }
-  };
-
-  // 修改表格组件配置
-  const components = {
-    body: {
-      cell: (props: any) => {
-        const { dataIndex, record, children, ...restProps } = props;
-        const editable = !getReadOnlyFields(selectedAction).includes(dataIndex);
-        
-        if (!editable) {
-          return <td {...restProps}>{children}</td>;
-        }
-
-        let input;
-        if (dataIndex === 'IsReserved') {
-          input = (
-            <Select
-              defaultValue={record[dataIndex]}
-              style={{ width: '100%' }}
-              onChange={(value) => {
-                const newData = [...editData];
-                const index = newData.findIndex(item => item.originalId === record.originalId);
-                if (index > -1) {
-                  newData[index] = { ...newData[index], [dataIndex]: value };
-                  setEditData(newData);
-                }
-              }}
-            >
-              <Select.Option value="TRUE">TRUE</Select.Option>
-              <Select.Option value="FALSE">FALSE</Select.Option>
-            </Select>
-          );
-        } else {
-          input = (
-            <Input
-              defaultValue={record[dataIndex]}
-              onChange={(e) => {
-                const newData = [...editData];
-                const index = newData.findIndex(item => item.originalId === record.originalId);
-                if (index > -1) {
-                  newData[index] = { ...newData[index], [dataIndex]: e.target.value };
-                  setEditData(newData);
-                }
-              }}
-            />
-          );
-        }
-
-        return <td {...restProps}>{input}</td>;
-      },
-    },
   };
 
   const uploadProps: UploadProps = {
@@ -959,8 +835,8 @@ const App: React.FC = () => {
                   columns={clonePageColumns}
                   dataSource={editData.map(row => ({ 
                     ...row, 
-                    MediaPlanId: targetMediaPlanId,
-                    OpportunityId: targetOpportunityId
+                    MediaPlanId: targetMediaPlanId || row.MediaPlanId,
+                    OpportunityId: targetOpportunityId || row.OpportunityId
                   }))}
                   pagination={{
                     pageSize,
@@ -969,7 +845,7 @@ const App: React.FC = () => {
                     onShowSizeChange: (current, size) => setPageSize(size),
                   }}
                   rowKey="originalId"
-                  scroll={{ x: true }}
+                  scroll={{ x: 'max-content' }}
                   components={components}
                 />
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
@@ -996,7 +872,7 @@ const App: React.FC = () => {
                     onShowSizeChange: (current, size) => setPageSize(size),
                   }}
                   rowKey="originalId"
-                  scroll={{ x: true }}
+                  scroll={{ x: 'max-content' }}
                   components={components}
                 />
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
@@ -1023,7 +899,7 @@ const App: React.FC = () => {
                     onShowSizeChange: (current, size) => setPageSize(size),
                   }}
                   rowKey="originalId"
-                  scroll={{ x: true }}
+                  scroll={{ x: 'max-content' }}
                   components={components}
                 />
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
