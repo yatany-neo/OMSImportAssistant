@@ -249,7 +249,7 @@ def download_ready_csv(request: Request):
 def download_template():
     # 获取项目根目录
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    template_path = os.path.join(base_dir, 'File template.csv')
+    template_path = os.path.join(base_dir, 'File template new.csv')
     return FileResponse(template_path, filename="OMS_Import_Template.csv", media_type='text/csv')
 
 if __name__ == "__main__":

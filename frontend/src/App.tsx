@@ -688,6 +688,10 @@ const App: React.FC = () => {
     .filter(id => id.includes(idInput))
     .map(id => ({ value: id }));
 
+  const handleDownloadTemplate = () => {
+    window.open('https://omsimportassistant-hrhpdxdrbvc3eha9.eastus2-01.azurewebsites.net/download_template', '_blank');
+  };
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Header style={{ background: '#fff', padding: 0, height: 80, display: 'flex', alignItems: 'center' }}>
@@ -751,11 +755,9 @@ const App: React.FC = () => {
                 {fileList.length === 0 ? 'Please select a file' : 'Upload'}
               </Button>
               <Button
-                type="default"
-                style={{ fontWeight: 500 }}
-                href="https://omsimportassistant-hrhpdxdrbvc3eha9.eastus2-01.azurewebsites.net/download_template"
-                target="_blank"
-                icon={<InboxOutlined />}>
+                type="link"
+                onClick={handleDownloadTemplate}
+              >
                 Download File Template
               </Button>
             </div>
