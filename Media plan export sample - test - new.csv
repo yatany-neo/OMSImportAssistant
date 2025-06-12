@@ -1,0 +1,10 @@
+EntityType,Id,Name,Description,StartDate,EndDate,TargetSpend,CustomerId,CustomerName,MediaPlanId,MediaPlanName,CurrencyCode,Contact,OpportunityId,MediaPlanStatus,LineId,LineName,LineType,LineStatus,Cpm,Cpd,TargetImpressions,IsReserved,BudgetScheduleType,Targets,PublisherId,PublisherName,ProductId,ProductName,ProductType
+MediaPlan,2,all inclusive,No comment,2024-10-16 00:00:00,2024-12-31 00:00:00,746325,10929149,,,,USD,simxu,,Draft,,,,,,,,,,,,,,,
+Line,1,Line test,,2024-10-17 00:00:00,2024-10-18 00:00:00,,10929149,,2,,,,,,,,Roadblock,Denied,,4652,,False,ASAP,,,,4,,
+Line,68719476775,draft test123,,2024-12-20 00:00:00,2024-12-22 23:59:59,,10929149,,2,,,,,,,,Roadblock,PendingApproval,,0,,False,ASAP,"[{""$type"":""Audience"",""Ids"":[1,38564514],""IsExcluded"":false,""AudienceTargetingType"":0},{""$type"":""Audience"",""Ids"":[38564516],""IsExcluded"":true,""AudienceTargetingType"":0}]",,,1,,
+Line,68719476786,simxutest3,4,2024-10-23 00:00:00,2024-10-25 00:00:00,,10929149,,2,,,,,,,,Roadblock,NeedApproval,,4,,False,ASAP,,,,1,,
+Line,68719476787,simxutest1,,10/24/2024 0:00,2024-10-26 00:00:00,,10929149,,2,,,,,,,,Roadblock,NeedApproval,,5,,False,ASAP,,,,4,,
+Line,68719476788,simxutest6,,10/23/2024 0:00,2024-10-26 00:00:00,,10929149,,2,,,,,,,,Roadblock,NeedApproval,,5,,False,ASAP,,,,4,,
+Line,68719476789,simxutest7,,2024-10-23 00:00:00,2024-10-26 00:00:00,,10929149,,2,,,,,,,,Roadblock,PendingApproval,,55,,False,ASAP,,,,4,,
+Line,68719476909,123,,,,,10929149,,2,,,,,,,,Rotational,Draft,50,,1000,False,ASAP,"[{""$type"":""Audience"",""Ids"":[1,38564516],""IsExcluded"":false,""AudienceTargetingType"":2},{""$type"":""Audience"",""Ids"":[38564514,38564517],""IsExcluded"":true,""AudienceTargetingType"":1}]",,,68719476743,,
+Line,68719477169,fasefasfe,,2024-12-27 00:00:00,2024-12-28 23:59:59,,10929149,,2,,,,,,,,Roadblock,PendingApproval,,1,,False,ASAP,"[{""$type"":""Device"",""DeviceTypes"":[1,2,3,4]}]",,,68719476761,,

@@ -27,7 +27,6 @@ app.add_middleware(
 # 用于存储内存中的临时数据
 TEMP_DATA = {
     "lines_temp": None,  # entitytype=Line 的所有行
-    "lines_target_temp": None,  # entitytype=LineTarget 的所有行
 }
 
 REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
@@ -53,34 +52,63 @@ except Exception as e:
 def get_session_id(request: Request):
     return request.cookies.get("session_id") or "default"
 
+def clear_session_data(session_id: str):
+    """清除会话相关的所有Redis数据"""
+    keys = redis_client.keys(f"*:{session_id}")
+    if keys:
+        redis_client.delete(*keys)
+
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...), request: Request = None):
     try:
-        df = pd.read_csv(file.file)
+        session_id = get_session_id(request)
+        # 清除旧的会话数据
+        clear_session_data(session_id)
+        
+        # 新标准字段
+        standard_columns = [
+            "EntityType", "Id", "Name", "Description", "StartDate", "EndDate", "TargetSpend", 
+            "CustomerId", "CustomerName", "MediaPlanId", "MediaPlanName", "CurrencyCode", 
+            "Contact", "OpportunityId", "MediaPlanStatus", "LineId", "LineName", "LineType", 
+            "LineStatus", "Cpm", "Cpd", "TargetImpressions", "IsReserved", "BudgetScheduleType", 
+            "Targets", "PublisherId", "PublisherName", "ProductId", "ProductName", "ProductType"
+        ]
+        
+        # 读取CSV文件
+        df = pd.read_csv(file.file, dtype=str, keep_default_na=False)
         print("[DEBUG] 上传CSV shape:", df.shape)
         print("[DEBUG] 上传CSV columns:", df.columns.tolist())
-        required_columns = [
-            "entitytype", "Id", "customerId", "MediaPlanId", "PRODUCTID",
-            "Name", "Description", "StartDate", "EndDate", "Cpm", "Cpd",
-            "TargetImpressions", "TargetSpend", "IsReserved", "LineType",
-            "BudgetScheduleType", "Targets", "LineId", "TargetType", "Ids",
-            "IsExcluded", "AudienceTargetingType", "DeviceTypes"
-        ]
-        missing_columns = [col for col in required_columns if col not in df.columns]
-        if missing_columns:
-            print(f"[DEBUG] 缺失列: {missing_columns}")
-            return {"error": f"Missing required columns: {', '.join(missing_columns)}"}
-        # 分离Line和LineTarget数据，忽略大小写和空格
-        lines_df = df[df['entitytype'].astype(str).str.strip().str.lower() == 'line']
-        lines_target_df = df[df['entitytype'].astype(str).str.strip().str.lower() == 'linetarget']
+        
+        # 校验字段名和顺序
+        if list(df.columns) != standard_columns:
+            return {"error": f"CSV columns do not match required format.\nExpected: {standard_columns}\nGot: {df.columns.tolist()}"}
+        
+        # 字段格式处理
+        df = df.apply(lambda x: x.str.strip() if x.dtype == "object" else x)  # 去除字符串字段的空白
+        
+        # 处理数字字段
+        numeric_fields = ['Id', 'CustomerId', 'MediaPlanId', 'Cpm', 'Cpd', 'TargetImpressions', 'TargetSpend']
+        for field in numeric_fields:
+            df[field] = pd.to_numeric(df[field], errors='coerce').fillna('')
+        
+        # 处理布尔字段
+        boolean_fields = ['IsReserved']
+        for field in boolean_fields:
+            df[field] = df[field].str.upper().map({'TRUE': 'TRUE', 'FALSE': 'FALSE'}).fillna('FALSE')
+        
+        # 处理日期字段
+        date_fields = ['StartDate', 'EndDate']
+        for field in date_fields:
+            df[field] = pd.to_datetime(df[field], errors='coerce').dt.strftime('%Y-%m-%d %H:%M:%S').fillna('')
+        
+        # 只保留 EntityType=Line 的行
+        lines_df = df[df['EntityType'].str.strip().str.upper() == 'LINE'].copy()
         print("[DEBUG] Line行数:", lines_df.shape[0])
-        print("[DEBUG] LineTarget行数:", lines_target_df.shape[0])
         print("[DEBUG] Line部分预览:", lines_df.head(2).to_dict(orient='records'))
-        print("[DEBUG] LineTarget部分预览:", lines_target_df.head(2).to_dict(orient='records'))
-        # 存入Redis
-        session_id = get_session_id(request)
+        
+        # 存储到Redis
         redis_client.set(f"lines_temp:{session_id}", lines_df.to_json(orient='records'), ex=3600)
-        redis_client.set(f"lines_target_temp:{session_id}", lines_target_df.to_json(orient='records'), ex=3600)
+        
         return {"message": "File processed successfully"}
     except Exception as e:
         print(f"[DEBUG] 上传处理异常: {e}")
@@ -106,39 +134,23 @@ async def process_clone(request: Request):
         print("[DEBUG] process_clone收到数据行数:", len(post_selection_complete_edit))
         lines_df = pd.DataFrame(post_selection_complete_edit)
         print("[DEBUG] process_clone lines_df shape:", lines_df.shape)
-        # 保留原始Id用于匹配
-        lines_df["_original_Id"] = lines_df["Id"]
+        
+        # 确保只处理EntityType=Line的数据
+        lines_df = lines_df[lines_df['EntityType'].str.strip().str.upper() == 'LINE'].copy()
+        
+        # 负数Id分配
+        max_negative_value = -1
+        for idx, row in lines_df.iterrows():
+            new_id = max_negative_value
+            lines_df.at[idx, 'Id'] = new_id
+            max_negative_value -= 1
+        
+        lines_df = lines_df.replace({np.nan: None})
+        review_data = lines_df.to_dict(orient='records')
+        
         session_id = get_session_id(request)
-        lines_target_temp_json = redis_client.get(f"lines_target_temp:{session_id}")
-        if not lines_target_temp_json:
-            return {"error": "No lines_target_temp data in memory"}
-        lines_target_df = pd.read_json(lines_target_temp_json)
-        print("[DEBUG] process_clone lines_target_df shape:", None if lines_target_df is None else lines_target_df.shape)
-        if lines_target_df is None:
-            print("[DEBUG] process_clone: lines_target_df为None")
-            return {"error": "No lines_target_temp data in memory"}
-        # 新增详细调试输出
-        print("[DEBUG] lines_df['Id']:", lines_df['Id'].tolist())
-        print("[DEBUG] lines_df['_original_Id']:", lines_df['_original_Id'].tolist())
-        print("[DEBUG] lines_target_df['LineId']:", lines_target_df['LineId'].tolist())
-        print("[DEBUG] lines_target_df['Id']:", lines_target_df['Id'].tolist())
-        # 用原始Id匹配LineTarget（类型统一为int）
-        line_ids = set(int(float(i)) for i in lines_df['_original_Id'] if pd.notnull(i))
-        lines_target_temp_select = lines_target_df[
-            lines_target_df['LineId'].apply(lambda x: int(float(x)) if pd.notnull(x) else None).isin(line_ids)
-        ].copy()
-        print("[DEBUG] 匹配到的LineTarget行数:", lines_target_temp_select.shape[0])
-        print("[DEBUG] 匹配到的LineTarget部分预览:", lines_target_temp_select.head(2).to_dict(orient='records'))
-        # 合并
-        lines_merged_select = pd.concat([lines_df, lines_target_temp_select], ignore_index=True)
-        print("[DEBUG] 合并后总行数:", lines_merged_select.shape[0])
-        # 不做负数Id重排，保留原始Id/LineId
-        if '_original_Id' in lines_merged_select.columns:
-            lines_merged_select = lines_merged_select.drop(columns=['_original_Id'])
-        lines_merged_select = lines_merged_select.replace({np.nan: None})
-        review_data = lines_merged_select.to_dict(orient='records')
-        redis_client.set(f"lines_merged_select_update_complete:{session_id}", lines_merged_select.to_json(orient='records'), ex=3600)
         redis_client.set(f"review_data:{session_id}", json.dumps(review_data), ex=3600)
+        
         return {"success": True, "review_data": review_data, "download_url": "/download_ready_csv"}
     except Exception as e:
         print(f"[DEBUG] process_clone异常: {e}")
@@ -150,48 +162,28 @@ async def process_copy(request: Request):
         body = await request.json()
         lines = body.get('lines', [])
         target_media_plan_id = body.get('targetMediaPlanId')
+        target_opportunity_id = body.get('targetOpportunityId')
+        
         lines_df = pd.DataFrame(lines)
-        lines_df["_original_Id"] = lines_df["Id"]
-        session_id = get_session_id(request)
-        lines_target_temp_json = redis_client.get(f"lines_target_temp:{session_id}")
-        if not lines_target_temp_json:
-            return {"error": "No lines_target_temp data in memory"}
-        lines_target_df = pd.read_json(lines_target_temp_json)
-        print("[DEBUG] process_copy lines_target_df shape:", None if lines_target_df is None else lines_target_df.shape)
-        if lines_target_df is None:
-            return {"error": "No lines_target_temp data in memory"}
-        # 匹配LineTarget
-        line_ids = set(int(float(i)) for i in lines_df['_original_Id'] if pd.notnull(i))
-        lines_target_temp_select = lines_target_df[
-            lines_target_df['LineId'].apply(lambda x: int(float(x)) if pd.notnull(x) else None).isin(line_ids)
-        ].copy()
-        # 合并
-        lines_merged_select = pd.concat([lines_df, lines_target_temp_select], ignore_index=True)
+        
+        # 确保只处理EntityType=Line的数据
+        lines_df = lines_df[lines_df['EntityType'].str.strip().str.upper() == 'LINE'].copy()
+        
         # 负数Id分配
         max_negative_value = -1
-        line_id_map = {}
-        for idx, row in lines_merged_select[lines_merged_select['entitytype'] == 'Line'].iterrows():
-            old_id = row['_original_Id'] if '_original_Id' in row else row['Id']
+        for idx, row in lines_df.iterrows():
             new_id = max_negative_value
-            line_id_map[old_id] = new_id
-            lines_merged_select.at[idx, 'Id'] = new_id
-            lines_merged_select.at[idx, 'MediaPlanId'] = target_media_plan_id
+            lines_df.at[idx, 'Id'] = new_id
+            lines_df.at[idx, 'MediaPlanId'] = target_media_plan_id
+            lines_df.at[idx, 'OpportunityId'] = target_opportunity_id
             max_negative_value -= 1
-        max_negative_value_2 = -1
-        for idx, row in lines_merged_select[lines_merged_select['entitytype'] == 'LineTarget'].iterrows():
-            new_id = max_negative_value_2
-            lines_merged_select.at[idx, 'Id'] = new_id
-            lines_merged_select.at[idx, 'MediaPlanId'] = target_media_plan_id
-            max_negative_value_2 -= 1
-            old_lineid = row['LineId']
-            if old_lineid in line_id_map:
-                lines_merged_select.at[idx, 'LineId'] = line_id_map[old_lineid]
-        if '_original_Id' in lines_merged_select.columns:
-            lines_merged_select = lines_merged_select.drop(columns=['_original_Id'])
-        lines_merged_select = lines_merged_select.replace({np.nan: None})
-        review_data = lines_merged_select.to_dict(orient='records')
-        redis_client.set(f"lines_merged_select_update_complete:{session_id}", lines_merged_select.to_json(orient='records'), ex=3600)
+        
+        lines_df = lines_df.replace({np.nan: None})
+        review_data = lines_df.to_dict(orient='records')
+        
+        session_id = get_session_id(request)
         redis_client.set(f"review_data:{session_id}", json.dumps(review_data), ex=3600)
+        
         return {"success": True, "review_data": review_data, "download_url": "/download_ready_csv"}
     except Exception as e:
         return {"error": str(e)}
@@ -201,28 +193,16 @@ async def process_edit(request: Request):
     try:
         post_selection_complete_edit = await request.json()
         lines_df = pd.DataFrame(post_selection_complete_edit)
-        lines_df["_original_Id"] = lines_df["Id"]
+        
+        # 确保只处理EntityType=Line的数据
+        lines_df = lines_df[lines_df['EntityType'].str.strip().str.upper() == 'LINE'].copy()
+        
+        lines_df = lines_df.replace({np.nan: None})
+        review_data = lines_df.to_dict(orient='records')
+        
         session_id = get_session_id(request)
-        lines_target_temp_json = redis_client.get(f"lines_target_temp:{session_id}")
-        if not lines_target_temp_json:
-            return {"error": "No lines_target_temp data in memory"}
-        lines_target_df = pd.read_json(lines_target_temp_json)
-        print("[DEBUG] process_edit lines_target_df shape:", None if lines_target_df is None else lines_target_df.shape)
-        if lines_target_df is None:
-            return {"error": "No lines_target_temp data in memory"}
-        # 匹配LineTarget
-        line_ids = set(int(float(i)) for i in lines_df['_original_Id'] if pd.notnull(i))
-        lines_target_temp_select = lines_target_df[
-            lines_target_df['LineId'].apply(lambda x: int(float(x)) if pd.notnull(x) else None).isin(line_ids)
-        ].copy()
-        # 合并
-        lines_merged_select = pd.concat([lines_df, lines_target_temp_select], ignore_index=True)
-        if '_original_Id' in lines_merged_select.columns:
-            lines_merged_select = lines_merged_select.drop(columns=['_original_Id'])
-        lines_merged_select = lines_merged_select.replace({np.nan: None})
-        review_data = lines_merged_select.to_dict(orient='records')
-        redis_client.set(f"lines_merged_select_update_complete:{session_id}", lines_merged_select.to_json(orient='records'), ex=3600)
         redis_client.set(f"review_data:{session_id}", json.dumps(review_data), ex=3600)
+        
         return {"success": True, "review_data": review_data, "download_url": "/download_ready_csv"}
     except Exception as e:
         return {"error": str(e)}
