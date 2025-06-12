@@ -103,6 +103,7 @@ const App: React.FC = () => {
     if (col.dataIndex === 'Id') {
       return {
         ...col,
+        width: 120,
         filterDropdown: () => (
           <div style={{ padding: 8, width: 200 }}>
             <AutoComplete
@@ -136,6 +137,7 @@ const App: React.FC = () => {
     if (col.dataIndex === 'Name') {
       return {
         ...col,
+        width: 200,
         filterDropdown: (props: FilterDropdownProps) => (
           <div style={{ padding: 8 }}>
             <Input
@@ -167,6 +169,7 @@ const App: React.FC = () => {
     if (col.dataIndex === 'Description') {
       return {
         ...col,
+        width: 200,
         filterDropdown: (props: FilterDropdownProps) => (
           <div style={{ padding: 8 }}>
             <Input
@@ -198,6 +201,7 @@ const App: React.FC = () => {
     if (col.dataIndex === 'StartDate' || col.dataIndex === 'EndDate') {
       return {
         ...col,
+        width: 150,
         filterDropdown: (props: FilterDropdownProps) => (
           <div style={{ padding: 8 }}>
             <RangePicker
@@ -224,6 +228,7 @@ const App: React.FC = () => {
     }
     return {
       ...col,
+      width: 120,
       sorter: getSorter(col.dataIndex),
     } as any;
   });
@@ -231,13 +236,15 @@ const App: React.FC = () => {
   // 定义clonePageColumns
   const clonePageColumns = columns.filter(col => displayFields.includes(col.dataIndex)).map(col => {
     const readOnlyFields = getReadOnlyFields(selectedAction);
+    const isEditable = !readOnlyFields.includes(col.dataIndex);
     return {
       ...col,
+      width: 120,
       sorter: getSorter(col.dataIndex),
-      editable: !readOnlyFields.includes(col.dataIndex),
+      editable: isEditable,
       onCell: (record: any) => ({
         record,
-        editable: !readOnlyFields.includes(col.dataIndex),
+        editable: isEditable,
         dataIndex: col.dataIndex,
       }),
     } as any;
@@ -409,7 +416,7 @@ const App: React.FC = () => {
     }
   };
 
-  // 修改表格单元格编辑组件以包含验证
+  // 修改表格单元格编辑组件
   const EditableCell: React.FC<{
     value: any;
     record: any;
@@ -451,12 +458,15 @@ const App: React.FC = () => {
     };
 
     const toggleEdit = () => {
+      if (!editable) return;
       setEditing(!editing);
       setInputValue(value);
       setError(null);
     };
 
     const save = async () => {
+      if (!editable) return;
+      
       const error = validateField(inputValue, dataIndex);
       if (error) {
         setError(error);
@@ -496,7 +506,15 @@ const App: React.FC = () => {
           {error && <div style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>{error}</div>}
         </div>
       ) : (
-        <div className="editable-cell-value-wrap" style={{ paddingRight: 24 }} onClick={toggleEdit}>
+        <div 
+          className="editable-cell-value-wrap" 
+          style={{ 
+            paddingRight: 24,
+            cursor: 'pointer',
+            color: '#1890ff'
+          }} 
+          onClick={toggleEdit}
+        >
           {children}
         </div>
       );
@@ -757,7 +775,7 @@ const App: React.FC = () => {
               }}
               rowSelection={rowSelection}
               rowKey="originalId"
-              scroll={{ x: true, y: tableHeight }}
+              scroll={{ x: 'max-content', y: tableHeight }}
             />
             <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
               <Button onClick={() => setCurrentStep(0)}>Back</Button>
