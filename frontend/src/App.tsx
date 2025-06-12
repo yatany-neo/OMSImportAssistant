@@ -690,7 +690,7 @@ const App: React.FC = () => {
           <div>
             <h2>Review Processed Data</h2>
             <Table
-              columns={columns}
+              columns={selectDataColumns}
               dataSource={selectedAction === 'copy'
                 ? reviewLineOnly(reviewData).map(row => ({ ...row, MediaPlanId: targetMediaPlanId }))
                 : reviewLineOnly(reviewData)}
