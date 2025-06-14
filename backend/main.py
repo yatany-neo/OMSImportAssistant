@@ -131,26 +131,27 @@ async def get_lines(request: Request):
 async def process_clone(request: Request):
     try:
         post_selection_complete_edit = await request.json()
+        print("[DEBUG] process_clone收到数据:", post_selection_complete_edit)
         print("[DEBUG] process_clone收到数据行数:", len(post_selection_complete_edit))
         lines_df = pd.DataFrame(post_selection_complete_edit)
         print("[DEBUG] process_clone lines_df shape:", lines_df.shape)
-        
+        print("[DEBUG] process_clone lines_df columns:", lines_df.columns.tolist())
+        print("[DEBUG] process_clone lines_df preview:", lines_df.head(2).to_dict(orient='records'))
         # 确保只处理EntityType=Line的数据
         lines_df = lines_df[lines_df['EntityType'].str.strip().str.upper() == 'LINE'].copy()
-        
+        print("[DEBUG] process_clone 过滤后Line shape:", lines_df.shape)
+        print("[DEBUG] process_clone 过滤后Line preview:", lines_df.head(2).to_dict(orient='records'))
         # 负数Id分配
         max_negative_value = -1
         for idx, row in lines_df.iterrows():
             new_id = max_negative_value
             lines_df.at[idx, 'Id'] = new_id
             max_negative_value -= 1
-        
         lines_df = lines_df.replace({np.nan: None})
         review_data = lines_df.to_dict(orient='records')
-        
+        print("[DEBUG] process_clone review_data:", review_data)
         session_id = get_session_id(request)
         redis_client.set(f"review_data:{session_id}", json.dumps(review_data), ex=3600)
-        
         return {"success": True, "review_data": review_data, "download_url": "/download_ready_csv"}
     except Exception as e:
         print(f"[DEBUG] process_clone异常: {e}")
@@ -160,15 +161,18 @@ async def process_clone(request: Request):
 async def process_copy(request: Request):
     try:
         body = await request.json()
+        print("[DEBUG] process_copy收到数据:", body)
         lines = body.get('lines', [])
         target_media_plan_id = body.get('targetMediaPlanId')
         target_opportunity_id = body.get('targetOpportunityId')
-        
         lines_df = pd.DataFrame(lines)
-        
+        print("[DEBUG] process_copy lines_df shape:", lines_df.shape)
+        print("[DEBUG] process_copy lines_df columns:", lines_df.columns.tolist())
+        print("[DEBUG] process_copy lines_df preview:", lines_df.head(2).to_dict(orient='records'))
         # 确保只处理EntityType=Line的数据
         lines_df = lines_df[lines_df['EntityType'].str.strip().str.upper() == 'LINE'].copy()
-        
+        print("[DEBUG] process_copy 过滤后Line shape:", lines_df.shape)
+        print("[DEBUG] process_copy 过滤后Line preview:", lines_df.head(2).to_dict(orient='records'))
         # 负数Id分配
         max_negative_value = -1
         for idx, row in lines_df.iterrows():
@@ -177,34 +181,37 @@ async def process_copy(request: Request):
             lines_df.at[idx, 'MediaPlanId'] = target_media_plan_id
             lines_df.at[idx, 'OpportunityId'] = target_opportunity_id
             max_negative_value -= 1
-        
         lines_df = lines_df.replace({np.nan: None})
         review_data = lines_df.to_dict(orient='records')
-        
+        print("[DEBUG] process_copy review_data:", review_data)
         session_id = get_session_id(request)
         redis_client.set(f"review_data:{session_id}", json.dumps(review_data), ex=3600)
-        
         return {"success": True, "review_data": review_data, "download_url": "/download_ready_csv"}
     except Exception as e:
+        print(f"[DEBUG] process_copy异常: {e}")
         return {"error": str(e)}
 
 @app.post("/process_edit")
 async def process_edit(request: Request):
     try:
         post_selection_complete_edit = await request.json()
+        print("[DEBUG] process_edit收到数据:", post_selection_complete_edit)
         lines_df = pd.DataFrame(post_selection_complete_edit)
-        
+        print("[DEBUG] process_edit lines_df shape:", lines_df.shape)
+        print("[DEBUG] process_edit lines_df columns:", lines_df.columns.tolist())
+        print("[DEBUG] process_edit lines_df preview:", lines_df.head(2).to_dict(orient='records'))
         # 确保只处理EntityType=Line的数据
         lines_df = lines_df[lines_df['EntityType'].str.strip().str.upper() == 'LINE'].copy()
-        
+        print("[DEBUG] process_edit 过滤后Line shape:", lines_df.shape)
+        print("[DEBUG] process_edit 过滤后Line preview:", lines_df.head(2).to_dict(orient='records'))
         lines_df = lines_df.replace({np.nan: None})
         review_data = lines_df.to_dict(orient='records')
-        
+        print("[DEBUG] process_edit review_data:", review_data)
         session_id = get_session_id(request)
         redis_client.set(f"review_data:{session_id}", json.dumps(review_data), ex=3600)
-        
         return {"success": True, "review_data": review_data, "download_url": "/download_ready_csv"}
     except Exception as e:
+        print(f"[DEBUG] process_edit异常: {e}")
         return {"error": str(e)}
 
 @app.get("/download_ready_csv")
