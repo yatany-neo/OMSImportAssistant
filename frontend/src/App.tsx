@@ -1,17 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { Layout, Steps, Upload, Table, Button, message, Modal, Input, DatePicker, AutoComplete, Progress, Select } from 'antd';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Layout, Steps, Upload, Table, Button, message, Modal, Input, Progress, Select } from 'antd';
 import { InboxOutlined, HomeOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
-import type { FilterDropdownProps } from 'antd/es/table/interface';
 import axios from 'axios';
 import dayjs from 'dayjs';
 
+//axios.defaults.baseURL = 'http://localhost:8000';
 axios.defaults.baseURL = 'https://omsimportassistant-hrhpdxdrbvc3eha9.eastus2-01.azurewebsites.net';
 
 const { Header, Content } = Layout;
 const { Dragger } = Upload;
 const { Step } = Steps;
-const { RangePicker } = DatePicker;
 
 const App: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -30,19 +29,22 @@ const App: React.FC = () => {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [tableHeight, setTableHeight] = useState(400);
   const [helpVisible, setHelpVisible] = useState(false);
-  const [idFilter, setIdFilter] = useState<string[]>([]);
-  const [idInput, setIdInput] = useState('');
-  const [nameFilter, setNameFilter] = useState('');
-  const [descFilter, setDescFilter] = useState('');
-  const [dateRange, setDateRange] = useState<[string, string] | null>(null);
+  const [idFilter] = useState<string[]>([]);
+  const [nameFilter] = useState('');
+  const [descFilter] = useState('');
+  const [dateRange] = useState<[string, string] | null>(null);
   const [resetModalVisible, setResetModalVisible] = useState(false);
-  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
-  const [nameFilterInput, setNameFilterInput] = useState('');
-  const [descFilterInput, setDescFilterInput] = useState('');
-  const [dateRangeInput, setDateRangeInput] = useState<[string, string] | null>(null);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [pageSize, setPageSize] = useState(20);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
+  const [targetMediaPlanName, setTargetMediaPlanName] = useState<string | null>(null);
+
+  const editableFields = useMemo(() => [
+    'Name', 'Description', 'StartDate', 'EndDate', 'TargetSpend', 'Cpm', 'Cpd', 
+    'TargetImpressions', 'IsReserved', 'LineType', 'BudgetScheduleType', 'CurrencyCode', 
+    'Contact'
+  ], []);
 
   // 1. 定义通用排序器
   const getSorter = (dataIndex: string) => {
@@ -66,9 +68,9 @@ const App: React.FC = () => {
     "EntityType","Id","Name","Description","StartDate","EndDate","TargetSpend","CustomerId","CustomerName","MediaPlanId","MediaPlanName","CurrencyCode","Contact","OpportunityId","MediaPlanStatus","LineId","LineName","LineType","LineStatus","Cpm","Cpd","TargetImpressions","IsReserved","BudgetScheduleType","Targets","PublisherId","PublisherName","ProductId","ProductName","ProductType"
   ];
   // 3. 全局隐藏字段
-  const hiddenFields = ["LineId", "LineName", "LineStatus", "Targets"];
+  const globalHiddenFields = ["LineId", "LineName", "LineStatus", "Targets"];
   // 4. 全局显示字段
-  const displayFields = allFields.filter(f => !hiddenFields.includes(f));
+  const displayFields = allFields.filter(f => !globalHiddenFields.includes(f));
   // 5. 统一columns定义（顺序与allFields一致）
   const columns = allFields.map(field => ({
     title: field,
@@ -78,59 +80,32 @@ const App: React.FC = () => {
     ellipsis: true,
   }));
 
-  // 定义不同操作模式下的只读字段
-  const getReadOnlyFields = (action: string | null) => {
-    const commonReadOnlyFields = [
-      "entitytype", "id", "customerid", "customername", "mediaplanid", 
-      "opportunityid", "mediaplanstatus", "publisherid", "publishername", 
-      "productid", "productname", "producttype"
-    ];
-    
-    switch (action) {
-      case 'clone':
-        return commonReadOnlyFields;
-      case 'copy':
-        return [...commonReadOnlyFields, "mediaplanname"];
-      case 'edit':
-        return commonReadOnlyFields;
-      default:
-        return [];
-    }
-  };
+  // PRD要求：各操作下的只读字段
+  const prdReadOnlyFields: { [key: string]: string[] } = useMemo(() => ({
+    clone: [
+      'EntityType', 'Id', 'CustomerId', 'CustomerName', 'MediaPlanId', 'MediaPlanName', 
+      'OpportunityId', 'MediaPlanStatus', 'PublisherId', 'PublisherName', 'ProductId', 
+      'ProductName', 'ProductType'
+    ],
+    edit: [
+      'Id', 'EntityType', 'MediaPlanId', 'MediaPlanName', 'OpportunityId', 'CustomerId', 
+      'CustomerName', 'PublisherId', 'PublisherName', 'ProductId', 'ProductName', 
+      'ProductType', 'LineId', 'LineName', 'LineType', 'LineStatus', 'CurrencyCode', 
+      'Contact', 'MediaPlanStatus', 'BudgetScheduleType', 'Targets'
+    ],
+    copy: [
+      'Id', 'EntityType', 'MediaPlanId', 'MediaPlanName', 'OpportunityId', 'CustomerId', 
+      'CustomerName', 'PublisherId', 'PublisherName', 'ProductId', 'ProductName', 
+      'ProductType', 'LineId', 'LineName', 'LineType', 'LineStatus', 'CurrencyCode', 
+      'Contact', 'MediaPlanStatus', 'BudgetScheduleType', 'Targets'
+    ]
+  }), []);
 
-  // 6. selectDataColumns 只显示 displayFields
   const selectDataColumns = columns.filter(col => displayFields.includes(col.dataIndex)).map(col => {
     if (col.dataIndex === 'Id') {
       return {
         ...col,
         width: 120,
-        filterDropdown: () => (
-          <div style={{ padding: 8, width: 200 }}>
-            <AutoComplete
-              style={{ width: '100%' }}
-              options={idOptions}
-              value={idInput}
-              onChange={v => {
-                setIdInput(v);
-              }}
-              onSelect={v => {
-                if (!idFilter.includes(v)) setIdFilter([...idFilter, v]);
-                setIdInput('');
-              }}
-              placeholder="Type to search Id"
-              allowClear
-            />
-            <div style={{ marginTop: 8, minHeight: 32 }}>
-              {idFilter.map(id => (
-                <span key={id} style={{ display: 'inline-block', background: '#e6f7ff', borderRadius: 4, padding: '2px 8px', margin: 2 }}>
-                  {id} <button onClick={() => setIdFilter(idFilter.filter(i => i !== id))} style={{ color: '#1890ff', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} aria-label="Remove Id">x</button>
-                </span>
-              ))}
-            </div>
-          </div>
-        ),
-        filterIcon: (filtered: boolean) => <span style={{ color: idFilter.length ? '#1890ff' : undefined }}>🔍</span>,
-        filteredValue: idFilter.length ? idFilter : null,
         sorter: getSorter(col.dataIndex),
       };
     }
@@ -138,31 +113,6 @@ const App: React.FC = () => {
       return {
         ...col,
         width: 200,
-        filterDropdown: (props: FilterDropdownProps) => (
-          <div style={{ padding: 8 }}>
-            <Input
-              placeholder="Search Name"
-              value={nameFilterInput}
-              onChange={e => setNameFilterInput(e.target.value)}
-              onPressEnter={() => { setNameFilter(nameFilterInput); props.confirm(); }}
-              style={{ width: 188, marginBottom: 8, display: 'block' }}
-            />
-            <Button
-              type="primary"
-              onClick={() => { setNameFilter(nameFilterInput); props.confirm(); }}
-              icon={<InboxOutlined />}
-              size="small"
-              style={{ width: 90, marginRight: 8 }}
-            >
-              Search
-            </Button>
-            <Button onClick={() => { setNameFilterInput(''); setNameFilter(''); props.clearFilters?.(); }} size="small" style={{ width: 90 }}>
-              Reset
-            </Button>
-          </div>
-        ),
-        filterIcon: (filtered: boolean) => <span style={{ color: nameFilter ? '#1890ff' : undefined }}>🔍</span>,
-        filteredValue: nameFilter ? [nameFilter] : null,
         sorter: getSorter(col.dataIndex),
       };
     }
@@ -170,59 +120,13 @@ const App: React.FC = () => {
       return {
         ...col,
         width: 200,
-        filterDropdown: (props: FilterDropdownProps) => (
-          <div style={{ padding: 8 }}>
-            <Input
-              placeholder="Search Description"
-              value={descFilterInput}
-              onChange={e => setDescFilterInput(e.target.value)}
-              onPressEnter={() => { setDescFilter(descFilterInput); props.confirm(); }}
-              style={{ width: 188, marginBottom: 8, display: 'block' }}
-            />
-            <Button
-              type="primary"
-              onClick={() => { setDescFilter(descFilterInput); props.confirm(); }}
-              icon={<InboxOutlined />}
-              size="small"
-              style={{ width: 90, marginRight: 8 }}
-            >
-              Search
-            </Button>
-            <Button onClick={() => { setDescFilterInput(''); setDescFilter(''); props.clearFilters?.(); }} size="small" style={{ width: 90 }}>
-              Reset
-            </Button>
-          </div>
-        ),
-        filterIcon: (filtered: boolean) => <span style={{ color: descFilter ? '#1890ff' : undefined }}>🔍</span>,
-        filteredValue: descFilter ? [descFilter] : null,
         sorter: getSorter(col.dataIndex),
       };
     }
     if (col.dataIndex === 'StartDate' || col.dataIndex === 'EndDate') {
       return {
         ...col,
-        width: 150,
-        filterDropdown: (props: FilterDropdownProps) => (
-          <div style={{ padding: 8 }}>
-            <RangePicker
-              value={dateRangeInput ? [
-                dateRangeInput[0] ? dayjs(dateRangeInput[0]) : null,
-                dateRangeInput[1] ? dayjs(dateRangeInput[1]) : null
-              ] : null}
-              onChange={dates => {
-                if (dates) setDateRangeInput([dates[0]?.format('YYYY-MM-DD') || '', dates[1]?.format('YYYY-MM-DD') || '']);
-                else setDateRangeInput(null);
-              }}
-              style={{ width: 220 }}
-            />
-            <div style={{ marginTop: 8 }}>
-              <Button type="primary" onClick={() => { setDateRange(dateRangeInput); props.confirm(); }} size="small" style={{ width: 90, marginRight: 8 }}>Search</Button>
-              <Button onClick={() => { setDateRangeInput(null); setDateRange(null); props.clearFilters?.(); }} size="small" style={{ width: 90 }}>Reset</Button>
-            </div>
-          </div>
-        ),
-        filterIcon: (filtered: boolean) => <span style={{ color: dateRange ? '#1890ff' : undefined }}>📅</span>,
-        filteredValue: dateRange ? [dateRange.join(',')] : null,
+        width: 220,
         sorter: getSorter(col.dataIndex),
       };
     }
@@ -233,14 +137,119 @@ const App: React.FC = () => {
     } as any;
   });
 
+  const editPageColumns = useMemo(() => {
+    // 以 selectDataColumns 的字段顺序和字段集为准
+    return selectDataColumns.map(col => {
+      const field = col.dataIndex;
+      // 判断是否可编辑
+      const isEditable = editableFields.includes(field) && !(prdReadOnlyFields[selectedAction || 'clone'] || []).includes(field);
+      return {
+        ...col,
+        editable: isEditable,
+        render: (text: any, record: any) => {
+          if (!isEditable) return (text === '' || text === null || text === undefined ? '-' : text);
+          if (field === 'IsReserved') {
+            return (
+              <Select
+                value={record[field]}
+                style={{ width: '100%' }}
+                onChange={value => {
+                  const newData = [...editData];
+                  const index = newData.findIndex(item => String(item.Id) === String(record.Id));
+                  if (index > -1) {
+                    newData[index] = { ...newData[index], [field]: value };
+                    setEditData(newData);
+                  }
+                }}
+              >
+                <Select.Option value="TRUE">TRUE</Select.Option>
+                <Select.Option value="FALSE">FALSE</Select.Option>
+              </Select>
+            );
+          }
+          return (
+            <Input
+              value={record[field]}
+              onChange={e => {
+                const newData = [...editData];
+                const index = newData.findIndex(item => String(item.Id) === String(record.Id));
+                if (index > -1) {
+                  newData[index] = { ...newData[index], [field]: e.target.value };
+                  setEditData(newData);
+                }
+              }}
+            />
+          );
+        }
+      };
+    });
+  }, [selectDataColumns, editableFields, prdReadOnlyFields, selectedAction, editData, setEditData]);
+
+  // Edit Data页面的表格组件配置
+  /*
+  const editPageComponents = {
+    body: {
+      cell: (props: any) => {
+        const { dataIndex, record, children, ...restProps } = props;
+        if (!record || !dataIndex) {
+          return <td {...restProps}></td>;
+        }
+        const col = editPageColumns.find(c => c.dataIndex === dataIndex);
+        if (!col || !col.editable) {
+          return <td {...restProps}>{record ? record[dataIndex] : ''}</td>;
+        }
+        // IsReserved 字段用下拉框
+        if (dataIndex === 'IsReserved') {
+          return (
+            <td {...restProps}>
+              <Select
+                value={record[dataIndex]}
+                style={{ width: '100%' }}
+                onChange={value => {
+                  const newData = [...editData];
+                  const index = newData.findIndex(item => item.originalId === record.originalId);
+                  if (index > -1) {
+                    newData[index] = { ...newData[index], [dataIndex]: value };
+                    setEditData(newData);
+                  }
+                }}
+              >
+                <Select.Option value="TRUE">TRUE</Select.Option>
+                <Select.Option value="FALSE">FALSE</Select.Option>
+              </Select>
+            </td>
+          );
+        }
+        // 其它字段用Input
+        return (
+          <td {...restProps}>
+            <Input
+              value={record[dataIndex]}
+              onChange={e => {
+                const newData = [...editData];
+                const index = newData.findIndex(item => item.originalId === record.originalId);
+                if (index > -1) {
+                  newData[index] = { ...newData[index], [dataIndex]: e.target.value };
+                  setEditData(newData);
+                }
+              }}
+            />
+          </td>
+        );
+      },
+    },
+  };
+  */
   // 修改表格组件配置
+  /*
   const components = {
     body: {
       cell: (props: any) => {
         const { dataIndex, record, children, ...restProps } = props;
         // 先判断 dataIndex 是否为字符串
         const isString = typeof dataIndex === 'string';
-        const editable = isString ? !getReadOnlyFields(selectedAction).includes(dataIndex.toLowerCase()) : false;
+        // 已重构为 editPageColumns，直接用 col.editable 判断
+        const editable = isString ? !editPageColumns.find(c => c.dataIndex === dataIndex)?.editable : false;
         
         if (!editable) {
           return <td {...restProps}>{children}</td>;
@@ -285,60 +294,9 @@ const App: React.FC = () => {
       },
     },
   };
-
-  // 修改 clonePageColumns 的定义
-  const clonePageColumns = [
-    {
-      title: 'Name',
-      dataIndex: 'Name',
-      key: 'Name',
-      width: 200,
-    },
-    {
-      title: 'Description',
-      dataIndex: 'Description',
-      key: 'Description',
-      width: 200,
-    },
-    {
-      title: 'StartDate',
-      dataIndex: 'StartDate',
-      key: 'StartDate',
-      width: 120,
-    },
-    {
-      title: 'EndDate',
-      dataIndex: 'EndDate',
-      key: 'EndDate',
-      width: 120,
-    },
-    {
-      title: 'TargetSpend',
-      dataIndex: 'TargetSpend',
-      key: 'TargetSpend',
-      width: 120,
-    },
-    {
-      title: 'IsReserved',
-      dataIndex: 'IsReserved',
-      key: 'IsReserved',
-      width: 120,
-    },
-    {
-      title: 'MediaPlanId',
-      dataIndex: 'MediaPlanId',
-      key: 'MediaPlanId',
-      width: 120,
-    },
-    {
-      title: 'OpportunityId',
-      dataIndex: 'OpportunityId',
-      key: 'OpportunityId',
-      width: 120,
-    },
-  ];
-
+  */
   // 添加数据验证函数
+  /*
   const validateData = (data: any[]) => {
     const errors: string[] = [];
     
@@ -378,7 +336,7 @@ const App: React.FC = () => {
 
     return errors;
   };
-
+  */
   // 添加导出验证函数
   const validateExportData = (data: any[]) => {
     const errors: string[] = [];
@@ -413,6 +371,7 @@ const App: React.FC = () => {
 
   // 修改处理函数以包含进度提示
   const handleProcess = async (action: string) => {
+    console.log('handleProcess called', action);
     setProcessing(true);
     setProcessingProgress(0);
     try {
@@ -425,6 +384,7 @@ const App: React.FC = () => {
             ...row, 
             Id: row.originalId, 
             MediaPlanId: targetMediaPlanId,
+            MediaPlanName: targetMediaPlanName,
             OpportunityId: targetOpportunityId 
           }));
           endpoint = '/process_copy';
@@ -441,21 +401,8 @@ const App: React.FC = () => {
           throw new Error('Invalid action');
       }
 
-      // 验证数据
-      const errors = validateData(submitData);
-      if (errors.length > 0) {
-        message.error(
-          <div>
-            <p>Please fix the following errors:</p>
-            <ul>
-              {errors.map((error, index) => (
-                <li key={index}>{error}</li>
-              ))}
-            </ul>
-          </div>
-        );
-        return;
-      }
+      console.log('handleProcess submitData:', submitData);
+      console.log('handleProcess endpoint:', endpoint);
 
       // 模拟进度更新
       const progressInterval = setInterval(() => {
@@ -469,6 +416,7 @@ const App: React.FC = () => {
       }, 500);
 
       const res = await axios.post(endpoint, action === 'copy' ? { lines: submitData, targetMediaPlanId, targetOpportunityId } : submitData);
+      console.log('handleProcess response:', res.data);
       
       clearInterval(progressInterval);
       setProcessingProgress(100);
@@ -487,6 +435,7 @@ const App: React.FC = () => {
               </ul>
             </div>
           );
+          setProcessing(false);
           return;
         }
 
@@ -536,6 +485,11 @@ const App: React.FC = () => {
         setUploadError(null);
         message.success('File uploaded successfully');
         setCurrentStep(1);
+        // 清空 action 选择和 3 个输入
+        setSelectedAction(null);
+        setTargetMediaPlanId(null);
+        setTargetMediaPlanName(null);
+        setTargetOpportunityId(null);
         // 获取数据
         const dataResponse = await axios.get('/lines');
         // 为每一行加originalId
@@ -551,55 +505,27 @@ const App: React.FC = () => {
   const rowSelection = {
     selectedRowKeys,
     onChange: (keys: React.Key[], rows: any[]) => {
-      // 合并已选 keys，去重
-      const mergedKeys = Array.from(new Set([...selectedRowKeys, ...keys]));
-      // 只保留当前 data 里存在的行
-      const allRows = [...selectedRows, ...rows];
-      const mergedRows = mergedKeys.map(key => allRows.find(row => row.originalId === key)).filter(Boolean);
-      setSelectedRowKeys(mergedKeys);
-      setSelectedRows(mergedRows);
+      setSelectedRowKeys(keys.map(String));
+      setSelectedRows(rows);
     },
-    // 当用户取消勾选时，移除对应 key
     onSelect: (record: any, selected: boolean) => {
       if (!selected) {
-        setSelectedRowKeys(selectedRowKeys.filter(key => key !== record.originalId));
-        setSelectedRows(selectedRows.filter(row => row.originalId !== record.originalId));
+        setSelectedRowKeys(selectedRowKeys.filter(key => key !== String(record.Id)));
+        setSelectedRows(selectedRows.filter(row => String(row.Id) !== String(record.Id)));
       }
     },
     onSelectAll: (selected: boolean, selectedRowsAll: any[], changeRows: any[]) => {
       if (selected) {
-        // 全选时合并所有 keys
-        const newKeys = changeRows.map(row => row.originalId);
-        const mergedKeys = Array.from(new Set([...selectedRowKeys, ...newKeys]));
-        const allRows = [...selectedRows, ...changeRows];
-        const mergedRows = mergedKeys.map(key => allRows.find(row => row.originalId === key)).filter(Boolean);
-        setSelectedRowKeys(mergedKeys);
-        setSelectedRows(mergedRows);
+        const newKeys = changeRows.map(row => String(row.Id));
+        setSelectedRowKeys(Array.from(new Set([...selectedRowKeys, ...newKeys])));
+        setSelectedRows(Array.from(new Set([...selectedRows, ...changeRows])));
       } else {
-        // 取消全选时移除当前页 keys
-        const removeKeys = changeRows.map(row => row.originalId);
+        const removeKeys = changeRows.map(row => String(row.Id));
         setSelectedRowKeys(selectedRowKeys.filter(key => !removeKeys.includes(key)));
-        setSelectedRows(selectedRows.filter(row => !removeKeys.includes(row.originalId)));
+        setSelectedRows(selectedRows.filter(row => !removeKeys.includes(String(row.Id))));
       }
     }
   };
-
-  // 进入第三步时初始化可编辑数据
-  useEffect(() => {
-    if (currentStep === 3 && selectedRows.length > 0) {
-      setEditData(selectedRows.map(row => ({ ...row, originalId: row.originalId })));
-    }
-  }, [currentStep, selectedRows]);
-
-  // review页只展示entitytype=Line的数据
-  const reviewLineOnly = (arr: any[]) => (arr || []).filter(row => row.entitytype === 'Line');
-
-  useEffect(() => {
-    const updateHeight = () => setTableHeight(window.innerHeight - 320); // 320为header/steps等高度
-    updateHeight();
-    window.addEventListener('resize', updateHeight);
-    return () => window.removeEventListener('resize', updateHeight);
-  }, []);
 
   // 过滤逻辑
   const filteredData = data.filter(row => {
@@ -615,19 +541,35 @@ const App: React.FC = () => {
     return true;
   });
 
-  // Id下拉选项
-  const idOptions = Array.from(new Set(data.map(row => String(row.Id))))
-    .filter(id => id.includes(idInput))
-    .map(id => ({ value: id }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (currentStep === 3) {
+      // copy 场景下赋值 MediaPlanName
+      if (selectedAction === 'copy') {
+        setEditData(selectedRowKeys.map(key => {
+          const row = data.find(row => String(row.Id) === String(key));
+          return row ? { ...row, Id: String(row.Id), MediaPlanName: targetMediaPlanName } : null;
+        }).filter(Boolean));
+      } else {
+        setEditData(selectedRowKeys.map(key => {
+          const row = data.find(row => String(row.Id) === String(key));
+          return row ? { ...row, Id: String(row.Id) } : null;
+        }).filter(Boolean));
+      }
+    }
+    // eslint-disable-next-line
+  }, [currentStep]);
 
-  const handleDownloadTemplate = () => {
-    window.open('https://omsimportassistant-hrhpdxdrbvc3eha9.eastus2-01.azurewebsites.net/download_template', '_blank');
-  };
+  // review页只展示entitytype=Line的数据
+  const reviewLineOnly = (arr: any[]) => (arr || []).filter(row => row.EntityType === 'Line');
 
-  // 修改处理按钮的点击事件
-  const handleNextClick = () => {
-    setConfirmModalVisible(true);
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const updateHeight = () => setTableHeight(window.innerHeight - 320); // 320为header/steps等高度
+    updateHeight();
+    window.addEventListener('resize', updateHeight);
+    return () => window.removeEventListener('resize', updateHeight);
+  }, []);
 
   // 添加确认对话框
   const ConfirmModal = () => {
@@ -650,7 +592,7 @@ const App: React.FC = () => {
         open={confirmModalVisible}
         onOk={() => {
           setConfirmModalVisible(false);
-          handleProcess(selectedAction || '');
+          handleProcess(selectedAction || 'clone');
         }}
         onCancel={() => setConfirmModalVisible(false)}
         okText="Yes, proceed"
@@ -666,6 +608,23 @@ const App: React.FC = () => {
     );
   };
 
+  // 在Review页面时输出reviewData和reviewLineOnly
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (currentStep === 4) {
+      console.log('reviewData:', reviewData);
+      console.log('reviewLineOnly:', reviewLineOnly(reviewData));
+    }
+  }, [currentStep, reviewData, editPageColumns]);
+
+  // Edit Data页面渲染日志
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (currentStep === 3) {
+      console.log('EditData render', currentStep, editData);
+    }
+  }, [currentStep, editData, editPageColumns]);
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Header style={{ background: '#fff', padding: 0, height: 80, display: 'flex', alignItems: 'center' }}>
@@ -679,7 +638,7 @@ const App: React.FC = () => {
             setFileList([]);
             setData([]);
             setSelectedRows([]);
-            setSelectedAction(null);
+            setSelectedRowKeys([]);
             setEditData([]);
             setProcessing(false);
             setDownloadReady(false);
@@ -730,7 +689,7 @@ const App: React.FC = () => {
               </Button>
               <Button
                 type="link"
-                onClick={handleDownloadTemplate}
+                onClick={() => window.open('https://omsimportassistant-hrhpdxdrbvc3eha9.eastus2-01.azurewebsites.net/download_template', '_blank')}
               >
                 Download File Template
               </Button>
@@ -750,7 +709,7 @@ const App: React.FC = () => {
                 onShowSizeChange: (current, size) => setPageSize(size),
               }}
               rowSelection={rowSelection}
-              rowKey="originalId"
+              rowKey={record => String(record.Id)}
               scroll={{ x: 'max-content', y: tableHeight }}
             />
             <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
@@ -784,7 +743,7 @@ const App: React.FC = () => {
               <Button
                 type={selectedAction === 'clone' ? 'primary' : 'default'}
                 size="large"
-                style={{ margin: '0 0 0 0', minWidth: 400, height: 64, fontSize: 22 }}
+                style={{ margin: '0 0 0 0', minWidth: 260, height: 44, fontSize: 16 }}
                 onClick={() => { setSelectedAction('clone'); setCurrentStep(3); }}
               >
                 I want to clone these line items in the media plan
@@ -792,7 +751,7 @@ const App: React.FC = () => {
               <Button
                 type={selectedAction === 'copy' ? 'primary' : 'default'}
                 size="large"
-                style={{ margin: '0 0 0 0', minWidth: 400, height: 64, fontSize: 22 }}
+                style={{ margin: '0 0 0 0', minWidth: 260, height: 44, fontSize: 16 }}
                 onClick={() => { setSelectedAction('copy'); setShowCopyModal(true); }}
               >
                 I want to copy these line items into a new media plan
@@ -800,7 +759,7 @@ const App: React.FC = () => {
               <Button
                 type={selectedAction === 'edit' ? 'primary' : 'default'}
                 size="large"
-                style={{ margin: '0 0 0 0', minWidth: 400, height: 64, fontSize: 22 }}
+                style={{ margin: '0 0 0 0', minWidth: 260, height: 44, fontSize: 16 }}
                 onClick={() => { setSelectedAction('edit'); setCurrentStep(3); }}
               >
                 I want to edit these line items
@@ -822,92 +781,34 @@ const App: React.FC = () => {
                 <Progress percent={processingProgress} status="active" />
               </div>
             )}
-            {selectedAction === 'copy' ? (
-              <div>
-                <h2>Please edit the lines you want to copy</h2>
                 <Table
-                  columns={clonePageColumns}
-                  dataSource={editData.map(row => ({ 
-                    ...row, 
+              columns={editPageColumns}
+              dataSource={selectedAction === 'copy'
+                ? editData.map(row => ({
+                    ...row,
                     MediaPlanId: targetMediaPlanId || row.MediaPlanId,
                     OpportunityId: targetOpportunityId || row.OpportunityId
-                  }))}
+                  }))
+                : editData}
                   pagination={{
                     pageSize,
                     pageSizeOptions: ['10', '20', '50', '100'],
                     showSizeChanger: true,
                     onShowSizeChange: (current, size) => setPageSize(size),
                   }}
-                  rowKey="originalId"
-                  scroll={{ x: 'max-content' }}
-                  components={components}
+              rowKey={record => String(record.Id)}
+              scroll={{ x: 'max-content' }}
                 />
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
                   <Button onClick={() => setCurrentStep(2)}>Back</Button>
                   <Button
                     type="primary"
                     loading={processing}
-                    onClick={handleNextClick}
+                onClick={() => handleProcess(selectedAction || 'clone')}
                   >
                     Next
                   </Button>
                 </div>
-              </div>
-            ) : selectedAction === 'edit' ? (
-              <div>
-                <h2>Please edit the lines you want to update</h2>
-                <Table
-                  columns={clonePageColumns}
-                  dataSource={editData}
-                  pagination={{
-                    pageSize,
-                    pageSizeOptions: ['10', '20', '50', '100'],
-                    showSizeChanger: true,
-                    onShowSizeChange: (current, size) => setPageSize(size),
-                  }}
-                  rowKey="originalId"
-                  scroll={{ x: 'max-content' }}
-                  components={components}
-                />
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
-                  <Button onClick={() => setCurrentStep(2)}>Back</Button>
-                  <Button
-                    type="primary"
-                    loading={processing}
-                    onClick={handleNextClick}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <h2>Please edit the lines you want to clone</h2>
-                <Table
-                  columns={clonePageColumns}
-                  dataSource={editData}
-                  pagination={{
-                    pageSize,
-                    pageSizeOptions: ['10', '20', '50', '100'],
-                    showSizeChanger: true,
-                    onShowSizeChange: (current, size) => setPageSize(size),
-                  }}
-                  rowKey="originalId"
-                  scroll={{ x: 'max-content' }}
-                  components={components}
-                />
-                <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
-                  <Button onClick={() => setCurrentStep(2)}>Back</Button>
-                  <Button
-                    type="primary"
-                    loading={processing}
-                    onClick={handleNextClick}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
@@ -925,7 +826,7 @@ const App: React.FC = () => {
                 showSizeChanger: true,
                 onShowSizeChange: (current, size) => setPageSize(size),
               }}
-              rowKey="originalId"
+              rowKey={record => String(record.Id)}
               scroll={{ x: 'max-content' }}
             />
             <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 24 }}>
@@ -964,36 +865,38 @@ const App: React.FC = () => {
         )}
 
         <Modal
-          title="Enter target Media Plan Id and Opportunity Id"
+          title="Enter Target Media Plan ID, Name and Opportunity ID"
           open={showCopyModal}
-          onOk={() => { 
-            if (targetMediaPlanId && targetOpportunityId) {
-              setShowCopyModal(false); 
-              setCurrentStep(3);
-            } else {
-              message.error('Please enter both Media Plan Id and Opportunity Id');
+          onOk={() => {
+            if (!targetMediaPlanId || !targetOpportunityId) {
+              message.error('Please enter Media Plan ID and Opportunity ID');
+              return;
             }
+            setShowCopyModal(false);
+            setCurrentStep(3);
           }}
           onCancel={() => setShowCopyModal(false)}
-          okButtonProps={{ disabled: !targetMediaPlanId || !targetOpportunityId }}
+          okText="Next"
+          cancelText="Cancel"
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div>
-              <div style={{ marginBottom: 8 }}>Target Media Plan Id:</div>
-              <Input
-                placeholder="Target Media Plan Id"
-                value={targetMediaPlanId || ''}
-                onChange={e => setTargetMediaPlanId(e.target.value)}
-              />
-            </div>
-            <div>
-              <div style={{ marginBottom: 8 }}>Target Opportunity Id:</div>
-              <Input
-                placeholder="Target Opportunity Id"
-                value={targetOpportunityId || ''}
-                onChange={e => setTargetOpportunityId(e.target.value)}
-              />
-            </div>
+          <div style={{ marginBottom: 16 }}>
+            <Input
+              placeholder="Target Media Plan ID"
+              value={targetMediaPlanId || ''}
+              onChange={e => setTargetMediaPlanId(e.target.value)}
+              style={{ marginBottom: 12 }}
+            />
+            <Input
+              placeholder="Target Media Plan Name (optional)"
+              value={targetMediaPlanName || ''}
+              onChange={e => setTargetMediaPlanName(e.target.value)}
+              style={{ marginBottom: 12 }}
+            />
+            <Input
+              placeholder="Target Opportunity ID"
+              value={targetOpportunityId || ''}
+              onChange={e => setTargetOpportunityId(e.target.value)}
+            />
           </div>
         </Modal>
 
@@ -1003,7 +906,7 @@ const App: React.FC = () => {
           onCancel={() => setHelpVisible(false)}
           footer={null}
           width={800}
-          bodyStyle={{ maxHeight: 600, overflowY: 'auto' }}
+          styles={{ body: { maxHeight: 600, overflowY: 'auto' } }}
         >
           <div style={{ fontSize: 16 }}>
             <h2>OMS Import Assistant User Manual</h2>
