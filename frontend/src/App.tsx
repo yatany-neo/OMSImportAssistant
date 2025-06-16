@@ -911,10 +911,21 @@ const App: React.FC = () => {
           <div style={{ fontSize: 16 }}>
             <h2>OMS Import Assistant User Manual</h2>
             <ol style={{ paddingLeft: 20 }}>
-              <li>Upload your CSV file. The file must contain the required columns: <b>entitytype, Id, customerId, MediaPlanId, PRODUCTID, Name, Description, StartDate, EndDate, Cpm, Cpd, TargetImpressions, TargetSpend, IsReserved, LineType, BudgetScheduleType, Targets, LineId, TargetType, Ids, IsExcluded, AudienceTargetingType, DeviceTypes</b>.</li>
+              <li>
+                <b>Upload your CSV file.</b> The file must contain <b>all</b> of the following columns (column order must match the template):<br/>
+                <span style={{ color: '#333', fontSize: 15 }}>
+                  <b>{["EntityType","Id","Name","Description","StartDate","EndDate","TargetSpend","CustomerId","CustomerName","MediaPlanId","MediaPlanName","CurrencyCode","Contact","OpportunityId","MediaPlanStatus","LineId","LineName","LineType","LineStatus","Cpm","Cpd","TargetImpressions","IsReserved","BudgetScheduleType","Targets","PublisherId","PublisherName","ProductId","ProductName","ProductType"].join(', ')}</b>
+                </span>
+              </li>
               <li>After upload, select the data rows you want to operate on. You can filter and page through the data.</li>
               <li>Choose an action: <b>Clone</b>, <b>Copy</b>, or <b>Edit</b> the selected lines.</li>
-              <li>In Edit Data, you can only edit specific parameters. Read-only fields are greyed out.</li>
+              <li>
+                In Edit Data, you can <b>only edit the following fields</b>:<br/>
+                <span style={{ color: '#333', fontSize: 15 }}>
+                  <b>{['Name', 'Description', 'StartDate', 'EndDate', 'TargetSpend', 'Cpm', 'Cpd', 'TargetImpressions', 'IsReserved', 'LineType', 'BudgetScheduleType', 'CurrencyCode', 'Contact'].join(', ')}</b>
+                </span><br/>
+                All other fields are read-only and cannot be modified.
+              </li>
               <li>Review the processed data. Only Line items are shown for review.</li>
               <li>Download the ready-for-import CSV and import it into your OMS system.</li>
             </ol>
