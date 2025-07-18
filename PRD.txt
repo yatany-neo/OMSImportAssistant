@@ -275,8 +275,20 @@ e. 将 lines_merged_select_update_complete 导出为新的 csv 文件，命名�
 
 本地测试命令
 后端：uvicorn main:app --reload
+
+   cd backend
+   uvicorn main:app --reload
+
 前端：npm start
 
+   cd frontend
+   npm start
+
 wsl 启动 redis: 
-在 WSL ubuntu 中启动 redis:  sudo service redis-server start
-验证 redis-cli ping
+在 WSL ubuntu 中启动 redis:  
+sudo service redis-server start
+验证 
+redis-cli ping
+
+前端发布前build
+npm run build
