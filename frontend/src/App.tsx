@@ -5,8 +5,26 @@ import type { UploadProps } from 'antd';
 import axios from 'axios';
 import dayjs from 'dayjs';
 
-//axios.defaults.baseURL = 'http://localhost:8000';
-axios.defaults.baseURL = 'https://omsimportassistant-hrhpdxdrbvc3eha9.eastus2-01.azurewebsites.net';
+// API配置
+const API_CONFIG = {
+  production: {
+    baseURL: 'https://omsimportassistant-hrhpdxdrbvc3eha9.eastus2-01.azurewebsites.net',
+    timeout: 30000, // 生产环境超时时间更长
+  },
+  development: {
+    baseURL: 'http://localhost:8000',
+    timeout: 10000,
+  }
+};
+
+// 环境配置
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const CONFIG = IS_PRODUCTION ? API_CONFIG.production : API_CONFIG.development;
+
+// 配置axios
+axios.defaults.baseURL = CONFIG.baseURL;
+axios.defaults.timeout = CONFIG.timeout;
+axios.defaults.withCredentials = true;
 
 const { Header, Content } = Layout;
 const { Dragger } = Upload;
@@ -40,16 +58,48 @@ const App: React.FC = () => {
   const [processingProgress, setProcessingProgress] = useState(0);
   const [targetMediaPlanName, setTargetMediaPlanName] = useState<string | null>(null);
 
-  const editableFields = useMemo(() => [
-    'Name', 'Description', 'StartDate', 'EndDate', 'TargetSpend', 'Cpm', 'Cpd', 
-    'TargetImpressions', 'IsReserved', 'LineType', 'BudgetScheduleType', 'CurrencyCode', 
-    'Contact'
-  ], []);
+  // 2. 新CSV字段顺序
+  const allFields = useMemo(() => [
+    "EntityType", "Id", "Name", "Description", "StartDate", "EndDate", "TargetSpend", 
+    "CustomerId", "CustomerName", "MediaPlanId", "MediaPlanName", "CurrencyCode", 
+    "Contact", "OpportunityId", "MediaPlanStatus", "LineId", "LineName", "LineType", 
+    "LineStatus", "Cpm", "Cpd", "TargetImpressions", "IsReserved", "BudgetScheduleType",
+    "TargetType", "Ids", "IsExcluded", "AudienceTargetingType", "DayOfWeek", 
+    "StartHour", "EndHour", "DeviceTypes", "FrequencyUnit", "FrequencyNumber", 
+    "MinutesPerImpression", "PublisherId", "PublisherName", "ProductId", "ProductName", 
+    "ProductType"
+  ], []); // 空依赖数组因为这是静态数据
+
+  // 3. 全局隐藏字段 - 包括 Id 字段
+  const globalHiddenFields: string[] = useMemo(() => ["Id"], []); // 空依赖数组因为这是静态数据
+
+  // 4. 统一columns定义（顺序与allFields一致）
+  const columns = allFields
+    .filter(field => !globalHiddenFields.includes(field))
+    .map(field => ({
+      title: field,
+      dataIndex: field,
+      key: field,
+      width: 120,
+      ellipsis: true,
+    }));
+
+  // 所有字段都可编辑，除了 Id
+  const editableFields = useMemo(() => allFields.filter(field => !globalHiddenFields.includes(field)), [allFields, globalHiddenFields]);
+
+  // 移除字段编辑限制
+  const prdReadOnlyFields: { [key: string]: string[] } = useMemo(() => ({
+    clone: ['Id'],
+    edit: ['Id'],
+    copy: ['Id']
+  }), []);
 
   // 1. 定义通用排序器
   const getSorter = (dataIndex: string) => {
     if ([
-      'Id', 'CustomerId', 'MediaPlanId', 'OpportunityId', 'PublisherId', 'ProductId', 'Cpm', 'Cpd', 'TargetImpressions', 'TargetSpend'
+      'Id', 'CustomerId', 'MediaPlanId', 'OpportunityId', 'PublisherId', 'ProductId', 
+      'Cpm', 'Cpd', 'TargetImpressions', 'TargetSpend', 'StartHour', 'EndHour',
+      'FrequencyNumber', 'MinutesPerImpression'
     ].includes(dataIndex)) {
       return (a: any, b: any) => Number(a[dataIndex] || 0) - Number(b[dataIndex] || 0);
     }
@@ -63,45 +113,8 @@ const App: React.FC = () => {
     return (a: any, b: any) => (a[dataIndex] || '').toString().localeCompare((b[dataIndex] || '').toString());
   };
 
-  // 2. 新CSV字段顺序
-  const allFields = [
-    "EntityType","Id","Name","Description","StartDate","EndDate","TargetSpend","CustomerId","CustomerName","MediaPlanId","MediaPlanName","CurrencyCode","Contact","OpportunityId","MediaPlanStatus","LineId","LineName","LineType","LineStatus","Cpm","Cpd","TargetImpressions","IsReserved","BudgetScheduleType","Targets","PublisherId","PublisherName","ProductId","ProductName","ProductType"
-  ];
-  // 3. 全局隐藏字段
-  const globalHiddenFields = ["LineId", "LineName", "LineStatus", "Targets"];
-  // 4. 全局显示字段
-  const displayFields = allFields.filter(f => !globalHiddenFields.includes(f));
   // 5. 统一columns定义（顺序与allFields一致）
-  const columns = allFields.map(field => ({
-    title: field,
-    dataIndex: field,
-    key: field,
-    width: 120,
-    ellipsis: true,
-  }));
-
-  // PRD要求：各操作下的只读字段
-  const prdReadOnlyFields: { [key: string]: string[] } = useMemo(() => ({
-    clone: [
-      'EntityType', 'Id', 'CustomerId', 'CustomerName', 'MediaPlanId', 'MediaPlanName', 
-      'OpportunityId', 'MediaPlanStatus', 'PublisherId', 'PublisherName', 'ProductId', 
-      'ProductName', 'ProductType'
-    ],
-    edit: [
-      'Id', 'EntityType', 'MediaPlanId', 'MediaPlanName', 'OpportunityId', 'CustomerId', 
-      'CustomerName', 'PublisherId', 'PublisherName', 'ProductId', 'ProductName', 
-      'ProductType', 'LineId', 'LineName', 'LineType', 'LineStatus', 'CurrencyCode', 
-      'Contact', 'MediaPlanStatus', 'BudgetScheduleType', 'Targets'
-    ],
-    copy: [
-      'Id', 'EntityType', 'MediaPlanId', 'MediaPlanName', 'OpportunityId', 'CustomerId', 
-      'CustomerName', 'PublisherId', 'PublisherName', 'ProductId', 'ProductName', 
-      'ProductType', 'LineId', 'LineName', 'LineType', 'LineStatus', 'CurrencyCode', 
-      'Contact', 'MediaPlanStatus', 'BudgetScheduleType', 'Targets'
-    ]
-  }), []);
-
-  const selectDataColumns = columns.filter(col => displayFields.includes(col.dataIndex)).map(col => {
+  const selectDataColumns = columns.map(col => {
     if (col.dataIndex === 'Id') {
       return {
         ...col,
@@ -134,7 +147,7 @@ const App: React.FC = () => {
       ...col,
       width: 120,
       sorter: getSorter(col.dataIndex),
-    } as any;
+    };
   });
 
   const editPageColumns = useMemo(() => {
@@ -148,7 +161,7 @@ const App: React.FC = () => {
         editable: isEditable,
         render: (text: any, record: any) => {
           if (!isEditable) return (text === '' || text === null || text === undefined ? '-' : text);
-          if (field === 'IsReserved') {
+          if (field === 'IsReserved' || field === 'IsExcluded') {
             return (
               <Select
                 value={record[field]}
@@ -165,6 +178,42 @@ const App: React.FC = () => {
                 <Select.Option value="TRUE">TRUE</Select.Option>
                 <Select.Option value="FALSE">FALSE</Select.Option>
               </Select>
+            );
+          }
+          if (field === 'DayOfWeek' || field === 'DeviceTypes') {
+            return (
+              <Select
+                mode="tags"
+                style={{ width: '100%' }}
+                value={record[field] ? record[field].split(',').filter(Boolean) : []}
+                onChange={value => {
+                  const newData = [...editData];
+                  const index = newData.findIndex(item => String(item.Id) === String(record.Id));
+                  if (index > -1) {
+                    newData[index] = { ...newData[index], [field]: value.join(',') };
+                    setEditData(newData);
+                  }
+                }}
+              />
+            );
+          }
+          if (field === 'StartHour' || field === 'EndHour') {
+            return (
+              <Input
+                type="number"
+                min={0}
+                max={23}
+                value={record[field]}
+                onChange={e => {
+                  const value = Math.min(23, Math.max(0, parseInt(e.target.value) || 0));
+                  const newData = [...editData];
+                  const index = newData.findIndex(item => String(item.Id) === String(record.Id));
+                  if (index > -1) {
+                    newData[index] = { ...newData[index], [field]: value };
+                    setEditData(newData);
+                  }
+                }}
+              />
             );
           }
           return (
@@ -353,11 +402,14 @@ const App: React.FC = () => {
       "TargetSpend", "CustomerId", "CustomerName", "MediaPlanId", 
       "MediaPlanName", "CurrencyCode", "Contact", "OpportunityId", 
       "MediaPlanStatus", "LineId", "LineName", "LineType", "LineStatus", 
-      "Cpm", "Cpd", "TargetImpressions", "IsReserved", "BudgetScheduleType", 
-      "Targets", "PublisherId", "PublisherName", "ProductId", "ProductName", 
-      "ProductType"
+      "Cpm", "Cpd", "TargetImpressions", "IsReserved", "BudgetScheduleType",
+      "TargetType", "Ids", "IsExcluded", "AudienceTargetingType", "DayOfWeek", 
+      "StartHour", "EndHour", "DeviceTypes", "FrequencyUnit", "FrequencyNumber", 
+      "MinutesPerImpression", "PublisherId", "PublisherName", "ProductId", 
+      "ProductName", "ProductType"
     ];
 
+    // 只验证字段存在性，不验证值
     data.forEach((row, index) => {
       requiredFields.forEach(field => {
         if (!(field in row)) {
@@ -847,11 +899,26 @@ const App: React.FC = () => {
             <p>Please go back to the corresponding media plan page in the OMS system and import the exported CSV file.</p>
             <Button
               type="primary"
-              href={downloadReady ? 'https://omsimportassistant-hrhpdxdrbvc3eha9.eastus2-01.azurewebsites.net/download_ready_csv' : undefined}
-              target="_blank"
+              onClick={async () => {
+                try {
+                  const response = await axios.get('/download_ready_csv', {
+                    responseType: 'blob'
+                  });
+                  const url = window.URL.createObjectURL(new Blob([response.data]));
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.setAttribute('download', 'ready_for_import.csv');
+                  document.body.appendChild(link);
+                  link.click();
+                  link.remove();
+                  window.URL.revokeObjectURL(url);
+                  setDownloaded(true);
+                } catch (error) {
+                  message.error('Download failed: ' + (error instanceof Error ? error.message : String(error)));
+                }
+              }}
               disabled={!downloadReady}
               style={{ marginTop: 24, marginRight: 16 }}
-              onClick={() => setDownloaded(true)}
             >
               Download CSV
             </Button>
