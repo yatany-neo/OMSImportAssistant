@@ -1,3 +1,0 @@
-entitytype,Id,customerId,MediaPlanId,PRODUCTID,Name,Description,StartDate,EndDate,Cpm,Cpd,TargetImpressions,TargetSpend,IsReserved,LineType,BudgetScheduleType,Targets,LineId,TargetType,Ids,IsExcluded,AudienceTargetingType,DeviceTypes
-LineTarget,11,10929147,30.0,,,,,,,,,,,,,,11.0,Audience,38564514.0,False,AND,
-LineTarget,12,10929147,30.0,,,,,,,,,,,,,,11.0,Device,,,,"Desktop,Mobile,Tablet,CTV"
